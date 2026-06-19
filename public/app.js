@@ -497,6 +497,19 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
+    async deleteComment(comment) {
+      try {
+        await api('DELETE', `/api/projects/${this.activeProject.slug}/items/${this.commentPopup.item.id}/comments/${comment.id}`);
+        this.commentPopup = { ...this.commentPopup, comments: this.commentPopup.comments.filter(c => c.id !== comment.id) };
+      } catch (e) {
+        this.showToast(e.message, 'error');
+      }
+    },
+
+    copyDescription(text) {
+      navigator.clipboard.writeText(text).then(() => this.showToast('Copied!')).catch(() => this.showToast('Copy failed', 'error'));
+    },
+
     // ---- Theme ----
     applyTheme() {
       const html = document.documentElement;
@@ -530,7 +543,7 @@ document.addEventListener('alpine:init', () => {
     async submitNonOwnerAssign() {
       this.nonOwnerAssignError = '';
       const name = this.nonOwnerAssignInput.trim();
-      if (!name) { this.nonOwnerAssignError = 'Nama harus diisi.'; return; }
+      if (!name) { this.nonOwnerAssignError = 'Name is required.'; return; }
       const item = this.nonOwnerAssignItem;
       const slug = this.activeProject.slug;
       const actorName = this.user?.username ?? this.guestName ?? name;
@@ -602,17 +615,13 @@ document.addEventListener('alpine:init', () => {
     async sendMessage() {
       const body = this.messageInput.trim();
       if (!body) return;
-      const senderName = this.user?.username ?? this.guestName;
-      if (!senderName) {
-        this.showToast('Set your name first to send messages.', 'error');
+      if (!this.user) {
+        this.showToast('Sign in to send messages.', 'error');
         return;
       }
       this.messageInput = '';
       try {
-        await api('POST', `/api/projects/${this.activeProject.slug}/messages`, {
-          body,
-          ...(!this.user ? { sender_name: senderName } : {}),
-        });
+        await api('POST', `/api/projects/${this.activeProject.slug}/messages`, { body });
       } catch (e) {
         this.messageInput = body;
         this.showToast(e.message, 'error');
@@ -769,6 +778,12 @@ document.addEventListener('alpine:init', () => {
             if (!this.commentPopup.comments.find(c => c.id === data.id)) {
               this.commentPopup = { ...this.commentPopup, comments: [...this.commentPopup.comments, data] };
             }
+          }
+          break;
+        }
+        case 'comment.deleted': {
+          if (this.commentPopup.visible && this.commentPopup.item?.id === data.item_id) {
+            this.commentPopup = { ...this.commentPopup, comments: this.commentPopup.comments.filter(c => c.id !== data.comment_id) };
           }
           break;
         }

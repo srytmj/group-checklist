@@ -424,6 +424,35 @@ items.get("/:id/comments", async (c) => {
   return c.json({ comments: rows });
 });
 
+// DELETE /:id/comments/:commentId — delete own comment within 5 minutes
+items.delete("/:id/comments/:commentId", async (c) => {
+  const slug = c.req.param("slug");
+  const itemId = c.req.param("id");
+  const commentId = c.req.param("commentId");
+  const user = c.get("user");
+
+  if (!user) return c.json({ error: "sign in to delete comments" }, 401);
+
+  const project = await getProject(slug);
+  if (!project) return c.json({ error: "not found" }, 404);
+  if (!canAccess(project, user.id)) return c.json({ error: "access denied" }, 403);
+
+  const [comment] = await sql`
+    SELECT id, author_id, created_at FROM item_comments
+    WHERE id = ${commentId} AND item_id = ${itemId}
+  `;
+  if (!comment) return c.json({ error: "comment not found" }, 404);
+  if (comment.author_id !== user.id) return c.json({ error: "you can only delete your own comments" }, 403);
+
+  const ageMs = Date.now() - new Date(comment.created_at).getTime();
+  if (ageMs > 5 * 60 * 1000) return c.json({ error: "comments can only be deleted within 5 minutes of posting" }, 403);
+
+  await sql`DELETE FROM item_comments WHERE id = ${commentId}`;
+  broadcastToRoom(slug, { event: "comment.deleted", data: { item_id: itemId, comment_id: commentId } });
+
+  return c.json({ ok: true });
+});
+
 // POST /:id/comments — add comment (registered users only)
 items.post("/:id/comments", async (c) => {
   const slug = c.req.param("slug");

@@ -488,6 +488,25 @@
       padding: 8px 12px 10px; font-size: 12px; color: var(--text-muted);
       border-top: 0.5px solid var(--border); flex-shrink: 0;
     }
+    .comment-delete-btn {
+      background: none; border: none; cursor: pointer;
+      padding: 0 3px; font-size: 14px; line-height: 1;
+      color: var(--text-muted); opacity: 0.4; transition: all 0.1s;
+      margin-left: auto; flex-shrink: 0;
+    }
+    .comment-delete-btn:hover { opacity: 1; color: var(--danger); }
+
+    /* ---- Item description copy ---- */
+    .item-desc-wrap { position: relative; }
+    .copy-desc-btn {
+      position: absolute; top: 4px; right: 4px;
+      background: var(--surface); border: 0.5px solid var(--border);
+      cursor: pointer; padding: 2px 6px; border-radius: 4px;
+      font-size: 11px; color: var(--text-muted); opacity: 0;
+      transition: opacity 0.12s;
+    }
+    .item-desc-wrap:hover .copy-desc-btn { opacity: 1; }
+    .copy-desc-btn:focus { opacity: 1; outline: none; }
 
     [x-cloak] { display: none !important; }
   </style>
@@ -671,7 +690,10 @@
 
                         <div class="item-body">
                           <div class="item-text" x-text="item.title"></div>
-                          <div class="item-desc" x-show="item.description" x-text="item.description"></div>
+                          <div x-show="item.description" class="item-desc-wrap">
+                            <div class="item-desc" x-text="item.description"></div>
+                            <button class="copy-desc-btn" @click.stop="copyDescription(item.description)" title="Copy description">⎘</button>
+                          </div>
                         </div>
 
                         <div class="item-actions" x-show="activeProject.is_owner">
@@ -703,9 +725,6 @@
                           </template>
                           <template x-if="!item.completion">
                             <span class="done-empty">-</span>
-                          </template>
-                          <template x-if="item.completion && !activeProject.is_owner">
-                            <button class="assign-btn" @click.stop="openNonOwnerComplete(item)">edit</button>
                           </template>
                         </div>
                         <button class="comment-icon-btn" @click.stop="openCommentPopup(item, $event)" title="Comments">💬</button>
@@ -751,11 +770,17 @@
                     </template>
                   </div>
                 </div>
-                <div x-show="!user && !guestName" style="padding:4px 12px 0;font-size:11px;color:var(--text-muted);">Set your name below to chat.</div>
-                <div class="chat-input-wrap">
-                  <input class="chat-input" type="text" x-model="messageInput" @keyup.enter="sendMessage()" placeholder="Message…" :disabled="!user && !guestName" />
-                  <button class="chat-send" @click="sendMessage()" :disabled="!messageInput.trim()">↑</button>
-                </div>
+                <template x-if="!user">
+                  <div style="padding:8px 12px 10px;font-size:12px;color:var(--text-muted);text-align:center;border-top:0.5px solid var(--border);">
+                    <a @click.prevent="authMode='login'" style="color:var(--accent);cursor:pointer;">Sign in</a> to send messages.
+                  </div>
+                </template>
+                <template x-if="user">
+                  <div class="chat-input-wrap">
+                    <input class="chat-input" type="text" x-model="messageInput" @keyup.enter="sendMessage()" placeholder="Message…" />
+                    <button class="chat-send" @click="sendMessage()" :disabled="!messageInput.trim()">↑</button>
+                  </div>
+                </template>
               </div>
             </template>
             <!-- Log tab (owner only) -->
@@ -838,7 +863,7 @@
         </div>
         <div class="form-group">
           <label x-text="itemForm.item_type === 'section' ? 'Section title' : 'Title'"></label>
-          <input type="text" x-model="itemForm.title" @keyup.enter="submitItem()" :placeholder="itemForm.item_type === 'section' ? 'e.g. Tugas 1 - Statistika Deskriptif' : 'What needs to be done?'" />
+          <input type="text" x-model="itemForm.title" @keyup.enter="submitItem()" :placeholder="itemForm.item_type === 'section' ? 'e.g. Phase 1 — Getting Started' : 'What needs to be done?'" />
         </div>
         <div class="form-group">
           <label x-text="itemForm.item_type === 'section' ? 'Caption (optional)' : 'Description (optional)'"></label>
@@ -934,16 +959,16 @@
   <!-- Non-owner assign (PIC / complete) -->
   <div class="modal-backdrop" x-show="modal === 'nonOwnerAssign'" @click.self="closeModal()">
     <div class="modal">
-      <h3 x-text="nonOwnerAssignMode === 'pic' ? 'Siapa penanggung jawabnya?' : (nonOwnerAssignItem?.completion ? 'Edit nama pengerjaan' : 'Siapa yang mengerjakan?')"></h3>
+      <h3 x-text="nonOwnerAssignMode === 'pic' ? 'Who is responsible?' : (nonOwnerAssignItem?.completion ? 'Edit completion' : 'Who completed this?')"></h3>
       <p class="modal-sub" x-text="nonOwnerAssignItem?.title?.slice(0, 60) + (nonOwnerAssignItem?.title?.length > 60 ? '...' : '')"></p>
       <div class="form-group">
-        <label x-text="nonOwnerAssignMode === 'pic' ? 'Nama penanggung jawab' : 'Nama kamu'"></label>
-        <input type="text" x-model="nonOwnerAssignInput" @keyup.enter="submitNonOwnerAssign()" placeholder="Masukkan nama..." />
+        <label x-text="nonOwnerAssignMode === 'pic' ? 'Person in charge' : 'Your name'"></label>
+        <input type="text" x-model="nonOwnerAssignInput" @keyup.enter="submitNonOwnerAssign()" placeholder="Enter name..." />
       </div>
       <p class="error-msg" x-show="nonOwnerAssignError" x-text="nonOwnerAssignError"></p>
       <div class="modal-actions">
-        <button class="btn btn-secondary" @click="closeModal()">Batal</button>
-        <button class="btn btn-primary" @click="submitNonOwnerAssign()">Simpan</button>
+        <button class="btn btn-secondary" @click="closeModal()">Cancel</button>
+        <button class="btn btn-primary" @click="submitNonOwnerAssign()">Save</button>
       </div>
     </div>
   </div>
@@ -1009,6 +1034,7 @@
           <div class="comment-item-meta">
             <span class="comment-author" x-text="c.author_name"></span>
             <span class="comment-time" x-text="new Date(c.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) + ' · ' + new Date(c.created_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})"></span>
+            <button x-show="user && c.author_name === user.username && (Date.now() - new Date(c.created_at).getTime()) < 300000" class="comment-delete-btn" @click.stop="deleteComment(c)" title="Delete comment">×</button>
           </div>
           <div class="comment-text" x-text="c.body"></div>
         </div>
