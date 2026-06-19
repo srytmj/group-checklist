@@ -82,12 +82,14 @@ projects.get("/:slug", async (c) => {
         json_agg(DISTINCT jsonb_build_object('id', ip.id, 'name', ip.name, 'assigned_by', ip.assigned_by))
         FILTER (WHERE ip.id IS NOT NULL), '[]'
       ) AS pics,
-      jsonb_build_object(
-        'id', ic.id,
-        'done_by_name', ic.done_by_name,
-        'notes', ic.notes,
-        'completed_at', ic.completed_at
-      ) FILTER (WHERE ic.id IS NOT NULL) AS completion
+      CASE WHEN ic.id IS NOT NULL THEN
+        jsonb_build_object(
+          'id', ic.id,
+          'done_by_name', ic.done_by_name,
+          'notes', ic.notes,
+          'completed_at', ic.completed_at
+        )
+      END AS completion
     FROM checklist_items ci
     LEFT JOIN item_pics ip ON ip.item_id = ci.id
     LEFT JOIN item_completions ic ON ic.item_id = ci.id
