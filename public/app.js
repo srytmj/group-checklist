@@ -39,7 +39,7 @@ document.addEventListener('alpine:init', () => {
     modalError: '',
 
     createProjectForm: { name: '', visibility: 'private' },
-    itemForm: { title: '', description: '', actor_name: '' },
+    itemForm: { title: '', description: '', actor_name: '', item_type: 'task' },
     editingItem: null,
     completeForm: { done_by_name: '', notes: '' },
     completingItem: null,
@@ -47,6 +47,10 @@ document.addEventListener('alpine:init', () => {
     pendingCompleteItem: null,
     picForm: { name: '', actor_name: '' },
     picTargetItem: null,
+
+    deleteItemTarget: null,
+
+    commentPopup: { visible: false, item: null, comments: [], loading: false, input: '', top: 0, left: 0 },
 
     draggingIndex: null,
     dragOverIndex: null,
@@ -99,7 +103,6 @@ document.addEventListener('alpine:init', () => {
       const hash = window.location.hash;
       const match = hash.match(/^#\/p\/([a-z0-9]+)$/);
       if (match) {
-        // Fix: also load project list when navigating directly to a project URL
         if (this.user) await this.loadProjects();
         await this.loadProject(match[1]);
       } else {
@@ -226,10 +229,20 @@ document.addEventListener('alpine:init', () => {
       navigator.clipboard.writeText(url).then(() => this.showToast('Link copied!'));
     },
 
+    // Computed: task items only (excludes sections)
+    get taskItems() {
+      return this.items.filter(i => i.item_type !== 'section');
+    },
+
     // ---- Items ----
     openEditItemModal(item) {
       this.editingItem = item;
-      this.itemForm = { title: item.title, description: item.description || '', actor_name: this.guestName };
+      this.itemForm = {
+        title: item.title,
+        description: item.description || '',
+        actor_name: this.guestName,
+        item_type: item.item_type || 'task',
+      };
       this.openModal('editItem');
     },
 
@@ -250,6 +263,7 @@ document.addEventListener('alpine:init', () => {
       const payload = {
         title: this.itemForm.title.trim(),
         description: this.itemForm.description?.trim() || undefined,
+        item_type: this.itemForm.item_type || 'task',
         ...(actorName ? { actor_name: actorName } : {}),
       };
       if (actorName) this.saveGuestNameSilent(actorName);
@@ -264,20 +278,33 @@ document.addEventListener('alpine:init', () => {
           this.items.push(item);
         }
         this.closeModal();
-        this.itemForm = { title: '', description: '', actor_name: '' };
+        this.itemForm = { title: '', description: '', actor_name: '', item_type: 'task' };
         this.editingItem = null;
       } catch (e) {
         this.modalError = e.message;
       }
     },
 
-    async deleteItem(item) {
-      if (!confirm(`Delete "${item.title}"?`)) return;
+    deleteItem(item) {
+      this.openDeleteItemModal(item);
+    },
+
+    openDeleteItemModal(item) {
+      this.deleteItemTarget = item;
+      this.openModal('deleteItem');
+    },
+
+    async confirmDeleteItem() {
+      const item = this.deleteItemTarget;
+      if (!item) return;
       try {
         await api('DELETE', `/api/projects/${this.activeProject.slug}/items/${item.id}`);
         this.items = this.items.filter(i => i.id !== item.id);
+        this.closeModal();
+        this.deleteItemTarget = null;
       } catch (e) {
         this.showToast(e.message, 'error');
+        this.closeModal();
       }
     },
 
@@ -403,7 +430,6 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
-    // Non-owner checkbox: auto-complete if name already set, else prompt for name first
     handleNonOwnerCheck(item) {
       const name = this.user?.username ?? this.guestName;
       if (!name) {
@@ -428,6 +454,49 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
+    // ---- Comment popup ----
+    openCommentPopup(item, event) {
+      const btn = event.currentTarget;
+      const rect = btn.getBoundingClientRect();
+      const popW = 296, popH = 360;
+      const vw = window.innerWidth, vh = window.innerHeight;
+
+      let top = rect.bottom + 6;
+      if (top + popH > vh - 10) top = Math.max(10, rect.top - popH - 6);
+
+      let left = rect.left;
+      if (left + popW > vw - 10) left = vw - popW - 10;
+      if (left < 10) left = 10;
+
+      this.commentPopup = { visible: true, item, comments: [], loading: true, input: '', top, left };
+      this.loadItemComments(item.id);
+    },
+
+    closeCommentPopup() {
+      this.commentPopup = { visible: false, item: null, comments: [], loading: false, input: '', top: 0, left: 0 };
+    },
+
+    async loadItemComments(itemId) {
+      try {
+        const data = await api('GET', `/api/projects/${this.activeProject.slug}/items/${itemId}/comments`);
+        this.commentPopup = { ...this.commentPopup, comments: data.comments || [], loading: false };
+      } catch {
+        this.commentPopup = { ...this.commentPopup, loading: false };
+      }
+    },
+
+    async addComment() {
+      const text = this.commentPopup.input.trim();
+      if (!text || !this.user) return;
+      const itemId = this.commentPopup.item.id;
+      try {
+        const comment = await api('POST', `/api/projects/${this.activeProject.slug}/items/${itemId}/comments`, { body: text });
+        this.commentPopup = { ...this.commentPopup, comments: [...this.commentPopup.comments, comment], input: '' };
+      } catch (e) {
+        this.showToast(e.message, 'error');
+      }
+    },
+
     // ---- Theme ----
     applyTheme() {
       const html = document.documentElement;
@@ -441,7 +510,7 @@ document.addEventListener('alpine:init', () => {
       this.applyTheme();
     },
 
-    // ---- Non-owner assign (PIC / edit completion name) ----
+    // ---- Non-owner assign ----
     openNonOwnerPic(item) {
       this.nonOwnerAssignMode = 'pic';
       this.nonOwnerAssignItem = item;
@@ -500,7 +569,6 @@ document.addEventListener('alpine:init', () => {
       this.guestName = name;
       localStorage.setItem('guestName', name);
       this.closeModal();
-      // If we were blocked on completing an item, do it now
       if (this.pendingCompleteItem) {
         const item = this.pendingCompleteItem;
         this.pendingCompleteItem = null;
@@ -586,6 +654,7 @@ document.addEventListener('alpine:init', () => {
       this.modal = name;
       this.modalError = '';
       if (name === 'guestName') this.guestNameInput = this.guestName;
+      if (name === 'addItem') this.itemForm = { title: '', description: '', actor_name: '', item_type: 'task' };
     },
     closeModal() {
       this.modal = null;
@@ -659,6 +728,7 @@ document.addEventListener('alpine:init', () => {
         }
         case 'item.deleted':
           this.items = this.items.filter(i => i.id !== data.id);
+          if (this.commentPopup.visible && this.commentPopup.item?.id === data.id) this.closeCommentPopup();
           refreshLogs();
           break;
         case 'item.reordered': {
@@ -692,6 +762,14 @@ document.addEventListener('alpine:init', () => {
           const idx = this.items.findIndex(i => i.id === data.item_id);
           if (idx !== -1) this.items[idx] = { ...this.items[idx], pics: this.items[idx].pics.filter(p => p.id !== data.pic_id) };
           refreshLogs();
+          break;
+        }
+        case 'comment.added': {
+          if (this.commentPopup.visible && this.commentPopup.item?.id === data.item_id) {
+            if (!this.commentPopup.comments.find(c => c.id === data.id)) {
+              this.commentPopup = { ...this.commentPopup, comments: [...this.commentPopup.comments, data] };
+            }
+          }
           break;
         }
         case 'message.created':

@@ -79,7 +79,7 @@ projects.get("/:slug", async (c) => {
 
   const items = await sql`
     SELECT
-      ci.id, ci.title, ci.description, ci.display_order, ci.created_at, ci.updated_at,
+      ci.id, ci.title, ci.description, ci.display_order, ci.item_type, ci.created_at, ci.updated_at,
       COALESCE(
         json_agg(DISTINCT jsonb_build_object('id', ip.id, 'name', ip.name, 'assigned_by', ip.assigned_by))
         FILTER (WHERE ip.id IS NOT NULL), '[]'

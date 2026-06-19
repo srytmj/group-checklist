@@ -407,6 +407,88 @@
     .log-ts { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
     .rp-empty { text-align: center; color: var(--text-muted); font-size: 12px; padding: 24px 16px; }
 
+    /* ---- Section headers (notebook-style) ---- */
+    .section-item {
+      margin-bottom: 4px; margin-top: 14px;
+      padding: 10px 12px 8px;
+      border-bottom: 2px solid var(--border-strong);
+    }
+    .section-item:first-child { margin-top: 0; }
+    .section-item.dragging { opacity: 0.4; }
+    .section-item.drag-over { border-bottom-color: var(--accent); }
+    .section-inner { display: flex; align-items: flex-start; gap: 8px; }
+    .section-body { flex: 1; min-width: 0; }
+    .section-title {
+      font-size: 14px; font-weight: 600; color: var(--text);
+      line-height: 1.4; letter-spacing: -0.01em;
+    }
+    .section-caption {
+      font-size: 12px; color: var(--text-muted); margin-top: 3px;
+      line-height: 1.5; font-style: italic;
+    }
+    .section-actions { display: flex; gap: 2px; flex-shrink: 0; }
+
+    /* ---- Comment icon button ---- */
+    .comment-icon-btn {
+      background: none; border: none; cursor: pointer;
+      padding: 1px 5px; border-radius: 4px; font-size: 13px;
+      color: var(--text-muted); opacity: 0.6; flex-shrink: 0;
+      transition: opacity 0.12s;
+    }
+    .comment-icon-btn:hover { opacity: 1; }
+
+    /* ---- Comment popup ---- */
+    .comment-popup {
+      position: fixed; width: 296px;
+      background: var(--surface);
+      border: 0.5px solid var(--border-strong);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.14);
+      z-index: 120; display: flex; flex-direction: column;
+      max-height: 400px; overflow: hidden;
+    }
+    .comment-popup-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px 8px; border-bottom: 0.5px solid var(--border);
+      flex-shrink: 0;
+    }
+    .comment-popup-title {
+      flex: 1; font-size: 12px; font-weight: 500; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .comment-completion {
+      padding: 8px 12px; background: var(--accent-bg);
+      border-bottom: 0.5px solid var(--border); flex-shrink: 0;
+    }
+    .comment-section-label {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--text-muted); font-weight: 600; margin-bottom: 4px;
+    }
+    .comment-completion-text { font-size: 12px; color: var(--text); line-height: 1.5; }
+    .comment-list { flex: 1; overflow-y: auto; padding: 10px 12px; }
+    .comment-loading, .comment-empty { font-size: 12px; color: var(--text-muted); }
+    .comment-item { margin-bottom: 10px; }
+    .comment-item:last-child { margin-bottom: 0; }
+    .comment-item-meta { display: flex; align-items: baseline; gap: 6px; margin-bottom: 2px; }
+    .comment-author { font-size: 12px; font-weight: 600; color: var(--text); }
+    .comment-time { font-size: 10px; color: var(--text-muted); }
+    .comment-text { font-size: 13px; color: var(--text); line-height: 1.5; word-break: break-word; }
+    .comment-add {
+      padding: 8px 12px 10px; border-top: 0.5px solid var(--border);
+      display: flex; flex-direction: column; gap: 6px; flex-shrink: 0;
+    }
+    .comment-textarea {
+      width: 100%; font-size: 12px; padding: 6px 9px;
+      border: 0.5px solid var(--border-med); border-radius: 6px;
+      background: var(--bg); color: var(--text); outline: none;
+      resize: none; font-family: inherit; line-height: 1.4;
+    }
+    .comment-textarea:focus { border-color: var(--accent); background: var(--surface); }
+    .comment-guest {
+      padding: 8px 12px 10px; font-size: 12px; color: var(--text-muted);
+      border-top: 0.5px solid var(--border); flex-shrink: 0;
+    }
+
     [x-cloak] { display: none !important; }
   </style>
 </head>
@@ -532,9 +614,9 @@
                 </template>
               </div>
             </div>
-            <p class="progress-label" x-text="items.filter(i=>i.completion).length + ' of ' + items.length + ' done'"></p>
+            <p class="progress-label" x-text="items.filter(i=>i.completion).length + ' of ' + items.filter(i=>i.item_type!=='section').length + ' done'"></p>
             <div class="progress-bar-wrap">
-              <div class="progress-bar" :style="'width:' + (items.length ? Math.round(items.filter(i=>i.completion).length / items.length * 100) : 0) + '%'"></div>
+              <div class="progress-bar" :style="'width:' + (items.filter(i=>i.item_type!=='section').length ? Math.round(items.filter(i=>i.completion).length / items.filter(i=>i.item_type!=='section').length * 100) : 0) + '%'"></div>
             </div>
           </div>
 
@@ -545,70 +627,97 @@
 
               <template x-for="(item, index) in items" :key="item.id">
                 <div
-                  class="item"
-                  :class="{ done: !!item.completion, dragging: activeProject.is_owner && draggingIndex === index, 'drag-over': activeProject.is_owner && dragOverIndex === index && draggingIndex !== index }"
+                  :class="{
+                    'item': item.item_type !== 'section',
+                    'section-item': item.item_type === 'section',
+                    'done': item.item_type !== 'section' && !!item.completion,
+                    'dragging': activeProject.is_owner && draggingIndex === index,
+                    'drag-over': activeProject.is_owner && dragOverIndex === index && draggingIndex !== index
+                  }"
                   :draggable="activeProject.is_owner"
                   @dragstart="activeProject.is_owner && dragStart($event, index)"
                   @dragover.prevent="activeProject.is_owner && dragOver($event, index)"
                   @drop.prevent="activeProject.is_owner && drop($event, index)"
                   @dragend="dragEnd()"
                 >
-                  <div class="item-main">
-                    <span class="drag-handle" x-show="activeProject.is_owner" title="Drag to reorder">⣿</span>
+                  <!-- Section header (notebook-style) -->
+                  <template x-if="item.item_type === 'section'">
+                    <div class="section-inner">
+                      <span class="drag-handle" x-show="activeProject.is_owner" title="Drag to reorder">⣿</span>
+                      <div class="section-body">
+                        <div class="section-title" x-text="item.title"></div>
+                        <div class="section-caption" x-show="item.description" x-text="item.description"></div>
+                      </div>
+                      <div class="section-actions" x-show="activeProject.is_owner">
+                        <button class="btn-icon" @click.stop="openEditItemModal(item)" title="Edit">✏</button>
+                        <button class="btn-icon danger" @click.stop="openDeleteItemModal(item)" title="Delete">✕</button>
+                      </div>
+                    </div>
+                  </template>
 
-                    <div
-                      class="checkbox"
-                      @click="item.completion ? openUncompleteModal(item) : (activeProject.is_owner ? openCompleteModal(item) : handleNonOwnerCheck(item))"
-                      :title="item.completion ? 'Undo completion' : 'Mark as complete'"
-                    >
-                      <span class="checkmark" x-show="item.completion">✓</span>
-                    </div>
+                  <!-- Task item -->
+                  <template x-if="!item.item_type || item.item_type === 'task'">
+                    <div>
+                      <div class="item-main">
+                        <span class="drag-handle" x-show="activeProject.is_owner" title="Drag to reorder">⣿</span>
 
-                    <div class="item-body">
-                      <div class="item-text" x-text="item.title"></div>
-                      <div class="item-desc" x-show="item.description" x-text="item.description"></div>
-                    </div>
+                        <div
+                          class="checkbox"
+                          @click="item.completion ? openUncompleteModal(item) : (activeProject.is_owner ? openCompleteModal(item) : handleNonOwnerCheck(item))"
+                          :title="item.completion ? 'Undo completion' : 'Mark as complete'"
+                        >
+                          <span class="checkmark" x-show="item.completion">✓</span>
+                        </div>
 
-                    <div class="item-actions" x-show="activeProject.is_owner">
-                      <button class="btn-icon" @click.stop="openEditItemModal(item)" title="Edit">✏</button>
-                      <button class="btn-icon danger" @click.stop="deleteItem(item)" title="Delete">✕</button>
-                    </div>
-                  </div>
+                        <div class="item-body">
+                          <div class="item-text" x-text="item.title"></div>
+                          <div class="item-desc" x-show="item.description" x-text="item.description"></div>
+                        </div>
 
-                  <div class="item-footer">
-                    <div class="footer-field">
-                      <span class="footer-label">PIC:</span>
-                      <template x-for="pic in item.pics" :key="pic.id">
-                        <span class="pic-chip">
-                          <span x-text="pic.name"></span>
-                          <button x-show="activeProject.is_owner" @click.stop="removePic(item, pic)" title="Remove">×</button>
-                        </span>
-                      </template>
-                      <button class="assign-btn" @click.stop="activeProject.is_owner ? openAddPicModal(item) : openNonOwnerPic(item)">
-                        <span x-text="activeProject.is_owner ? '+ add' : 'assign'"></span>
-                      </button>
+                        <div class="item-actions" x-show="activeProject.is_owner">
+                          <button class="btn-icon" @click.stop="openEditItemModal(item)" title="Edit">✏</button>
+                          <button class="btn-icon danger" @click.stop="openDeleteItemModal(item)" title="Delete">✕</button>
+                        </div>
+                      </div>
+
+                      <div class="item-footer">
+                        <div class="footer-field">
+                          <span class="footer-label">PIC:</span>
+                          <template x-for="pic in item.pics" :key="pic.id">
+                            <span class="pic-chip">
+                              <span x-text="pic.name"></span>
+                              <button x-show="activeProject.is_owner" @click.stop="removePic(item, pic)" title="Remove">×</button>
+                            </span>
+                          </template>
+                          <button class="assign-btn" @click.stop="activeProject.is_owner ? openAddPicModal(item) : openNonOwnerPic(item)">
+                            <span x-text="activeProject.is_owner ? '+ add' : 'assign'"></span>
+                          </button>
+                        </div>
+                        <div class="footer-field">
+                          <span class="footer-label">Done by:</span>
+                          <template x-if="item.completion">
+                            <span class="done-name" x-text="item.completion.done_by_name"></span>
+                          </template>
+                          <template x-if="item.completion">
+                            <span class="done-time" x-text="new Date(item.completion.completed_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) + ' · ' + new Date(item.completion.completed_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})"></span>
+                          </template>
+                          <template x-if="!item.completion">
+                            <span class="done-empty">-</span>
+                          </template>
+                          <template x-if="item.completion && !activeProject.is_owner">
+                            <button class="assign-btn" @click.stop="openNonOwnerComplete(item)">edit</button>
+                          </template>
+                        </div>
+                        <button class="comment-icon-btn" @click.stop="openCommentPopup(item, $event)" title="Comments">💬</button>
+                      </div>
                     </div>
-                    <div class="footer-field">
-                      <span class="footer-label">Done by:</span>
-                      <template x-if="item.completion">
-                        <span class="done-name" x-text="item.completion.done_by_name"></span>
-                      </template>
-                      <template x-if="item.completion">
-                        <span class="done-time" x-text="new Date(item.completion.completed_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) + ' · ' + new Date(item.completion.completed_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})"></span>
-                      </template>
-                      <template x-if="!item.completion">
-                        <span class="done-empty">-</span>
-                      </template>
-                      <template x-if="item.completion && !activeProject.is_owner">
-                        <button class="assign-btn" @click.stop="openNonOwnerComplete(item)">edit</button>
-                      </template>
-                    </div>
-                  </div>
+                  </template>
+
                 </div>
               </template>
 
               <template x-if="activeProject.is_owner">
-                <button class="btn-add-item" @click="openModal('addItem')">+ Add checklist item</button>
+                <button class="btn-add-item" @click="openModal('addItem')">+ Add task or section</button>
               </template>
 
             </div>
@@ -721,12 +830,19 @@
       <h3>Add item</h3>
       <div class="modal-body">
         <div class="form-group">
-          <label>Title</label>
-          <input type="text" x-model="itemForm.title" @keyup.enter="submitItem()" placeholder="What needs to be done?" />
+          <label>Type</label>
+          <select x-model="itemForm.item_type">
+            <option value="task">Task</option>
+            <option value="section">Section header</option>
+          </select>
         </div>
         <div class="form-group">
-          <label>Description (optional)</label>
-          <textarea x-model="itemForm.description" rows="3" placeholder="Details..."></textarea>
+          <label x-text="itemForm.item_type === 'section' ? 'Section title' : 'Title'"></label>
+          <input type="text" x-model="itemForm.title" @keyup.enter="submitItem()" :placeholder="itemForm.item_type === 'section' ? 'e.g. Tugas 1 - Statistika Deskriptif' : 'What needs to be done?'" />
+        </div>
+        <div class="form-group">
+          <label x-text="itemForm.item_type === 'section' ? 'Caption (optional)' : 'Description (optional)'"></label>
+          <textarea x-model="itemForm.description" rows="2" :placeholder="itemForm.item_type === 'section' ? 'Short description of this section...' : 'Details...'"></textarea>
         </div>
         <template x-if="!user">
           <div class="form-group">
@@ -738,7 +854,7 @@
       </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" @click="closeModal()">Cancel</button>
-        <button class="btn btn-primary" @click="submitItem()">Add</button>
+        <button class="btn btn-primary" @click="submitItem()" x-text="itemForm.item_type === 'section' ? 'Add section' : 'Add task'"></button>
       </div>
     </div>
   </div>
@@ -844,6 +960,70 @@
         <button class="btn btn-secondary" @click="closeModal()">Cancel</button>
         <button class="btn btn-primary" style="background:var(--danger);border-color:var(--danger);" @click="confirmUncomplete()">Undo</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Delete item -->
+  <div class="modal-backdrop" x-show="modal === 'deleteItem'" @click.self="closeModal()">
+    <div class="modal">
+      <h3>Delete item?</h3>
+      <p class="modal-sub" x-text="deleteItemTarget?.title?.slice(0,80)"></p>
+      <p style="font-size:13px;color:var(--text-muted);margin-top:4px;">This cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" @click="closeModal()">Cancel</button>
+        <button class="btn btn-primary" style="background:var(--danger);border-color:var(--danger);" @click="confirmDeleteItem()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Comment popup backdrop -->
+  <div x-show="commentPopup.visible" style="position:fixed;inset:0;z-index:110;" @click="closeCommentPopup()"></div>
+
+  <!-- Comment popup -->
+  <div
+    x-show="commentPopup.visible"
+    class="comment-popup"
+    :style="`top:${commentPopup.top}px;left:${commentPopup.left}px`"
+    @click.stop
+  >
+    <div class="comment-popup-header">
+      <span class="comment-popup-title" x-text="commentPopup.item?.title?.slice(0,60)"></span>
+      <button class="btn-link" @click="closeCommentPopup()" style="font-size:18px;line-height:1;padding:0 2px;">×</button>
+    </div>
+
+    <!-- Completion note if present -->
+    <template x-if="commentPopup.item?.completion?.notes">
+      <div class="comment-completion">
+        <div class="comment-section-label">Completion note</div>
+        <div class="comment-completion-text" x-text="commentPopup.item.completion.notes"></div>
+      </div>
+    </template>
+
+    <!-- Comments list -->
+    <div class="comment-list">
+      <div class="comment-section-label">Comments</div>
+      <div class="comment-loading" x-show="commentPopup.loading">Loading…</div>
+      <div class="comment-empty" x-show="!commentPopup.loading && commentPopup.comments.length === 0">No comments yet.</div>
+      <template x-for="c in commentPopup.comments" :key="c.id">
+        <div class="comment-item">
+          <div class="comment-item-meta">
+            <span class="comment-author" x-text="c.author_name"></span>
+            <span class="comment-time" x-text="new Date(c.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) + ' · ' + new Date(c.created_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})"></span>
+          </div>
+          <div class="comment-text" x-text="c.body"></div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Add comment (registered users only) -->
+    <template x-if="user">
+      <div class="comment-add">
+        <textarea class="comment-textarea" x-model="commentPopup.input" @keydown.meta.enter="addComment()" @keydown.ctrl.enter="addComment()" placeholder="Add a comment…" rows="2"></textarea>
+        <button class="btn btn-primary" style="font-size:12px;padding:5px 12px;align-self:flex-end;" @click="addComment()" :disabled="!commentPopup.input.trim()">Comment</button>
+      </div>
+    </template>
+    <div x-show="!user" class="comment-guest">
+      <a @click="closeCommentPopup(); authMode='login';" style="color:var(--accent);cursor:pointer;">Sign in</a> to leave a comment. Guests can view only.
     </div>
   </div>
 

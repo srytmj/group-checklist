@@ -51,7 +51,7 @@ items.get("/", async (c) => {
 
   const rows = await sql`
     SELECT
-      ci.id, ci.title, ci.description, ci.display_order, ci.created_at, ci.updated_at,
+      ci.id, ci.title, ci.description, ci.display_order, ci.item_type, ci.created_at, ci.updated_at,
       COALESCE(
         json_agg(DISTINCT jsonb_build_object('id', ip.id, 'name', ip.name, 'assigned_by', ip.assigned_by))
         FILTER (WHERE ip.id IS NOT NULL), '[]'
@@ -88,9 +88,11 @@ items.post("/", async (c) => {
     title?: string;
     description?: string;
     display_order?: number;
+    item_type?: string;
     actor_name?: string;
   }>();
-  const { title = "", description, display_order } = body;
+  const { title = "", description, display_order, item_type } = body;
+  const validType = item_type === 'section' ? 'section' : 'task';
 
   if (!title.trim()) return c.json({ error: "title is required" }, 400);
 
@@ -104,9 +106,9 @@ items.post("/", async (c) => {
   const order = display_order ?? max_order + 1;
 
   const [item] = await sql`
-    INSERT INTO checklist_items (project_id, title, description, display_order)
-    VALUES (${project.id}, ${title.trim()}, ${description ?? null}, ${order})
-    RETURNING id, title, description, display_order, created_at, updated_at
+    INSERT INTO checklist_items (project_id, title, description, display_order, item_type)
+    VALUES (${project.id}, ${title.trim()}, ${description ?? null}, ${order}, ${validType})
+    RETURNING id, title, description, display_order, item_type, created_at, updated_at
   `;
 
   await writeLog({
@@ -197,7 +199,7 @@ items.patch("/:id", async (c) => {
       title       = COALESCE(${body.title?.trim() ?? null}, title),
       description = COALESCE(${body.description ?? null}, description)
     WHERE id = ${itemId}
-    RETURNING id, title, description, display_order, created_at, updated_at
+    RETURNING id, title, description, display_order, item_type, created_at, updated_at
   `;
 
   await writeLog({
@@ -400,6 +402,53 @@ items.delete("/:id/complete", async (c) => {
   broadcastToRoom(slug, { event: "item.uncompleted", data: { item_id: itemId } });
 
   return c.json({ ok: true });
+});
+
+// GET /:id/comments — list comments for an item
+items.get("/:id/comments", async (c) => {
+  const slug = c.req.param("slug");
+  const itemId = c.req.param("id");
+  const user = c.get("user");
+
+  const project = await getProject(slug);
+  if (!project) return c.json({ error: "not found" }, 404);
+  if (!canAccess(project, user?.id)) return c.json({ error: "access denied" }, 403);
+
+  const rows = await sql`
+    SELECT id, item_id, author_name, body, created_at
+    FROM item_comments
+    WHERE item_id = ${itemId}
+    ORDER BY created_at ASC
+  `;
+
+  return c.json({ comments: rows });
+});
+
+// POST /:id/comments — add comment (registered users only)
+items.post("/:id/comments", async (c) => {
+  const slug = c.req.param("slug");
+  const itemId = c.req.param("id");
+  const user = c.get("user");
+
+  if (!user) return c.json({ error: "sign in to comment" }, 401);
+
+  const project = await getProject(slug);
+  if (!project) return c.json({ error: "not found" }, 404);
+  if (!canAccess(project, user.id)) return c.json({ error: "access denied" }, 403);
+
+  const body = await c.req.json<{ body?: string }>();
+  const text = body.body?.trim() ?? "";
+  if (!text) return c.json({ error: "body is required" }, 400);
+
+  const [comment] = await sql`
+    INSERT INTO item_comments (item_id, author_name, author_id, body)
+    VALUES (${itemId}, ${user.username}, ${user.id}, ${text})
+    RETURNING id, item_id, author_name, body, created_at
+  `;
+
+  broadcastToRoom(slug, { event: "comment.added", data: comment });
+
+  return c.json(comment, 201);
 });
 
 export default items;
