@@ -124,6 +124,52 @@ items.post("/", async (c) => {
   return c.json({ ...item, pics: [], completion: null }, 201);
 });
 
+// PATCH /reorder — bulk update display_order (must be before /:id to avoid UUID parse error)
+items.patch("/reorder", async (c) => {
+  const slug = c.req.param("slug");
+  const user = c.get("user");
+
+  const project = await getProject(slug);
+  if (!project) return c.json({ error: "not found" }, 404);
+  if (!canAccess(project, user?.id)) return c.json({ error: "access denied" }, 403);
+
+  const body = await c.req.json<{
+    order: { id: string; display_order: number }[];
+    actor_name?: string;
+  }>();
+  const { order = [] } = body;
+
+  if (!Array.isArray(order) || order.length === 0) {
+    return c.json({ error: "order array is required" }, 400);
+  }
+
+  const actorName = resolveActor(user, body);
+
+  // Update in a transaction
+  await sql.begin(async (tx) => {
+    for (const { id, display_order } of order) {
+      await tx`
+        UPDATE checklist_items
+        SET display_order = ${display_order}
+        WHERE id = ${id} AND project_id = ${project.id}
+      `;
+    }
+  });
+
+  await writeLog({
+    project_id: project.id,
+    actor_name: actorName,
+    action: "item.reordered",
+    payload: { order },
+    ip: c.get("ip"),
+    user_agent: c.get("userAgent"),
+  });
+
+  broadcastToRoom(slug, { event: "item.reordered", data: { order } });
+
+  return c.json({ ok: true });
+});
+
 // PATCH /:id — update item title/description
 items.patch("/:id", async (c) => {
   const slug = c.req.param("slug");
@@ -197,52 +243,6 @@ items.delete("/:id", async (c) => {
   });
 
   broadcastToRoom(slug, { event: "item.deleted", data: { id: itemId } });
-
-  return c.json({ ok: true });
-});
-
-// PATCH /reorder — bulk update display_order
-items.patch("/reorder", async (c) => {
-  const slug = c.req.param("slug");
-  const user = c.get("user");
-
-  const project = await getProject(slug);
-  if (!project) return c.json({ error: "not found" }, 404);
-  if (!canAccess(project, user?.id)) return c.json({ error: "access denied" }, 403);
-
-  const body = await c.req.json<{
-    order: { id: string; display_order: number }[];
-    actor_name?: string;
-  }>();
-  const { order = [] } = body;
-
-  if (!Array.isArray(order) || order.length === 0) {
-    return c.json({ error: "order array is required" }, 400);
-  }
-
-  const actorName = resolveActor(user, body);
-
-  // Update in a transaction
-  await sql.begin(async (tx) => {
-    for (const { id, display_order } of order) {
-      await tx`
-        UPDATE checklist_items
-        SET display_order = ${display_order}
-        WHERE id = ${id} AND project_id = ${project.id}
-      `;
-    }
-  });
-
-  await writeLog({
-    project_id: project.id,
-    actor_name: actorName,
-    action: "item.reordered",
-    payload: { order },
-    ip: c.get("ip"),
-    user_agent: c.get("userAgent"),
-  });
-
-  broadcastToRoom(slug, { event: "item.reordered", data: { order } });
 
   return c.json({ ok: true });
 });

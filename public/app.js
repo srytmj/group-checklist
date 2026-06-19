@@ -47,6 +47,11 @@ document.addEventListener('alpine:init', () => {
     draggingIndex: null,
     dragOverIndex: null,
 
+    nonOwnerAssignMode: null,
+    nonOwnerAssignItem: null,
+    nonOwnerAssignInput: '',
+    nonOwnerAssignError: '',
+
     ws: null,
     wsSlug: null,
 
@@ -298,7 +303,7 @@ document.addEventListener('alpine:init', () => {
       try {
         const pic = await api('POST', `/api/projects/${this.activeProject.slug}/items/${this.picTargetItem.id}/pics`, payload);
         const idx = this.items.findIndex(i => i.id === this.picTargetItem.id);
-        if (idx !== -1) this.items[idx].pics.push(pic);
+        if (idx !== -1) this.items[idx] = { ...this.items[idx], pics: [...this.items[idx].pics, pic] };
         this.closeModal();
         this.picForm = { name: '', actor_name: '' };
         this.picTargetItem = null;
@@ -311,7 +316,7 @@ document.addEventListener('alpine:init', () => {
       try {
         await api('DELETE', `/api/projects/${this.activeProject.slug}/items/${item.id}/pics/${pic.id}`);
         const idx = this.items.findIndex(i => i.id === item.id);
-        if (idx !== -1) this.items[idx].pics = this.items[idx].pics.filter(p => p.id !== pic.id);
+        if (idx !== -1) this.items[idx] = { ...this.items[idx], pics: this.items[idx].pics.filter(p => p.id !== pic.id) };
       } catch (e) {
         this.showToast(e.message, 'error');
       }
@@ -337,7 +342,7 @@ document.addEventListener('alpine:init', () => {
       try {
         const completion = await api('POST', `/api/projects/${this.activeProject.slug}/items/${this.completingItem.id}/complete`, payload);
         const idx = this.items.findIndex(i => i.id === this.completingItem.id);
-        if (idx !== -1) this.items[idx].completion = completion;
+        if (idx !== -1) this.items[idx] = { ...this.items[idx], completion };
         this.closeModal();
         this.completingItem = null;
       } catch (e) {
@@ -351,9 +356,61 @@ document.addEventListener('alpine:init', () => {
       try {
         await api('DELETE', `/api/projects/${this.activeProject.slug}/items/${item.id}/complete`);
         const idx = this.items.findIndex(i => i.id === item.id);
-        if (idx !== -1) this.items[idx].completion = null;
+        if (idx !== -1) this.items[idx] = { ...this.items[idx], completion: null };
       } catch (e) {
         this.showToast(e.message, 'error');
+      }
+    },
+
+    // ---- Non-owner assign (PIC / complete) ----
+    openNonOwnerPic(item) {
+      this.nonOwnerAssignMode = 'pic';
+      this.nonOwnerAssignItem = item;
+      this.nonOwnerAssignInput = '';
+      this.nonOwnerAssignError = '';
+      this.openModal('nonOwnerAssign');
+    },
+
+    openNonOwnerComplete(item) {
+      this.nonOwnerAssignMode = 'complete';
+      this.nonOwnerAssignItem = item;
+      this.nonOwnerAssignInput = item.completion?.done_by_name || this.guestName || (this.user?.username ?? '');
+      this.nonOwnerAssignError = '';
+      this.openModal('nonOwnerAssign');
+    },
+
+    async submitNonOwnerAssign() {
+      this.nonOwnerAssignError = '';
+      const name = this.nonOwnerAssignInput.trim();
+      if (!name) { this.nonOwnerAssignError = 'Nama harus diisi.'; return; }
+      const item = this.nonOwnerAssignItem;
+      const slug = this.activeProject.slug;
+      const actorName = this.user?.username ?? this.guestName ?? name;
+      if (this.nonOwnerAssignMode === 'pic') {
+        try {
+          const pic = await api('POST', `/api/projects/${slug}/items/${item.id}/pics`, {
+            name,
+            ...(!this.user ? { actor_name: actorName } : {}),
+          });
+          const idx = this.items.findIndex(i => i.id === item.id);
+          if (idx !== -1) this.items[idx] = { ...this.items[idx], pics: [...this.items[idx].pics, pic] };
+          this.closeModal();
+        } catch (e) {
+          this.nonOwnerAssignError = e.message;
+        }
+      } else {
+        try {
+          const completion = await api('POST', `/api/projects/${slug}/items/${item.id}/complete`, {
+            done_by_name: name,
+            ...(!this.user ? { actor_name: name } : {}),
+          });
+          const idx = this.items.findIndex(i => i.id === item.id);
+          if (idx !== -1) this.items[idx] = { ...this.items[idx], completion };
+          if (!this.user) this.saveGuestNameSilent(name);
+          this.closeModal();
+        } catch (e) {
+          this.nonOwnerAssignError = e.message;
+        }
       }
     },
 
@@ -456,24 +513,24 @@ document.addEventListener('alpine:init', () => {
         }
         case 'item.completed': {
           const idx = this.items.findIndex(i => i.id === data.item_id);
-          if (idx !== -1) this.items[idx].completion = data.completion;
+          if (idx !== -1) this.items[idx] = { ...this.items[idx], completion: data.completion };
           break;
         }
         case 'item.uncompleted': {
           const idx = this.items.findIndex(i => i.id === data.item_id);
-          if (idx !== -1) this.items[idx].completion = null;
+          if (idx !== -1) this.items[idx] = { ...this.items[idx], completion: null };
           break;
         }
         case 'item.pic_added': {
           const idx = this.items.findIndex(i => i.id === data.item_id);
           if (idx !== -1 && !this.items[idx].pics.find(p => p.id === data.pic.id)) {
-            this.items[idx].pics.push(data.pic);
+            this.items[idx] = { ...this.items[idx], pics: [...this.items[idx].pics, data.pic] };
           }
           break;
         }
         case 'item.pic_removed': {
           const idx = this.items.findIndex(i => i.id === data.item_id);
-          if (idx !== -1) this.items[idx].pics = this.items[idx].pics.filter(p => p.id !== data.pic_id);
+          if (idx !== -1) this.items[idx] = { ...this.items[idx], pics: this.items[idx].pics.filter(p => p.id !== data.pic_id) };
           break;
         }
         case 'project.updated':

@@ -8,392 +8,384 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --sidebar-w: 260px;
-      --sidebar-bg: #202123;
-      --main-bg: #343541;
-      --card-bg: #3e3f4b;
-      --input-bg: #40414f;
-      --text: #ececf1;
-      --text-muted: #8e8ea0;
-      --accent: #10a37f;
-      --accent-hover: #0d8f6e;
-      --border: #4d4d4f;
-      --danger: #ef4444;
-      --warning: #f59e0b;
+      --bg: #f5f5f3;
+      --surface: #fff;
+      --surface-sub: #fafaf8;
+      --text: #1a1a18;
+      --text-muted: #888780;
+      --text-sub: #5f5e5a;
+      --border: rgba(0,0,0,0.1);
+      --border-med: rgba(0,0,0,0.15);
+      --border-strong: rgba(0,0,0,0.25);
+      --accent: #3b6d11;
+      --accent-bg: rgba(59,109,17,0.08);
+      --danger: #e24b4a;
+      --sidebar-bg: #ebebea;
       --radius: 8px;
+      --radius-lg: 12px;
     }
 
-    html, body { height: 100%; font-family: system-ui, -apple-system, sans-serif; background: var(--main-bg); color: var(--text); font-size: 14px; }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1a18;
+        --surface: #242422;
+        --surface-sub: #1e1e1c;
+        --text: #e8e8e5;
+        --text-muted: #888780;
+        --text-sub: #b4b2a9;
+        --border: rgba(255,255,255,0.08);
+        --border-med: rgba(255,255,255,0.12);
+        --border-strong: rgba(255,255,255,0.22);
+        --accent: #6db33f;
+        --accent-bg: rgba(109,179,63,0.08);
+        --sidebar-bg: #141412;
+      }
+    }
 
-    /* ---- Scrollbar ---- */
-    ::-webkit-scrollbar { width: 6px; }
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text); font-size: 14px;
+    }
+
+    ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
 
     /* ---- Layout ---- */
     .layout { display: flex; height: 100vh; overflow: hidden; }
 
     /* ---- Sidebar ---- */
     .sidebar {
-      width: var(--sidebar-w);
-      min-width: var(--sidebar-w);
+      width: 236px; min-width: 236px;
       background: var(--sidebar-bg);
-      display: flex;
-      flex-direction: column;
-      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      border-right: 0.5px solid var(--border);
       overflow: hidden;
     }
-    .sidebar-header {
-      padding: 16px 12px 8px;
-      border-bottom: 1px solid var(--border);
-    }
-    .sidebar-title { font-size: 15px; font-weight: 600; color: var(--text); }
-    .sidebar-projects { flex: 1; overflow-y: auto; padding: 8px 0; }
-    .sidebar-footer { padding: 12px; border-top: 1px solid var(--border); }
+    .sidebar-header { padding: 16px 12px 6px; }
+    .sidebar-brand { font-size: 14px; font-weight: 600; color: var(--text); }
+    .sidebar-projects { flex: 1; overflow-y: auto; padding: 6px; }
+    .sidebar-footer { padding: 10px 12px; border-top: 0.5px solid var(--border); }
 
     .btn-new-project {
-      width: 100%;
-      padding: 9px 12px;
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: var(--radius);
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 8px;
+      width: 100%; padding: 7px 10px; margin-bottom: 8px;
+      background: var(--accent); color: #fff;
+      border: none; border-radius: var(--radius);
+      font-size: 12px; font-weight: 500; cursor: pointer;
+      display: flex; align-items: center; gap: 6px;
     }
-    .btn-new-project:hover { background: var(--accent-hover); }
+    .btn-new-project:hover { opacity: 0.88; }
 
     .project-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 9px 12px;
-      cursor: pointer;
-      border-radius: 6px;
-      margin: 1px 6px;
-      color: var(--text);
-      transition: background 0.15s;
-      text-decoration: none;
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 10px; cursor: pointer;
+      border-radius: 6px; margin-bottom: 1px; color: var(--text);
+      transition: background 0.12s; user-select: none;
     }
-    .project-item:hover { background: rgba(255,255,255,0.07); }
-    .project-item.active { background: rgba(255,255,255,0.12); }
-    .project-item-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+    .project-item:hover { background: rgba(0,0,0,0.05); }
+    .project-item.active { background: rgba(0,0,0,0.09); }
+    @media (prefers-color-scheme: dark) {
+      .project-item:hover { background: rgba(255,255,255,0.05); }
+      .project-item.active { background: rgba(255,255,255,0.1); }
+    }
+    .project-item-name {
+      flex: 1; white-space: nowrap; overflow: hidden;
+      text-overflow: ellipsis; font-size: 13px;
+    }
     .badge-vis {
-      font-size: 10px;
-      padding: 1px 5px;
-      border-radius: 4px;
-      font-weight: 500;
-      flex-shrink: 0;
+      font-size: 10px; padding: 1px 5px;
+      border-radius: 4px; font-weight: 500; flex-shrink: 0;
     }
-    .badge-public { background: rgba(16,163,127,0.2); color: var(--accent); }
-    .badge-private { background: rgba(255,255,255,0.08); color: var(--text-muted); }
+    .badge-public { background: var(--accent-bg); color: var(--accent); }
+    .badge-private { background: rgba(0,0,0,0.06); color: var(--text-muted); }
+    @media (prefers-color-scheme: dark) {
+      .badge-private { background: rgba(255,255,255,0.07); }
+    }
 
-    .user-info { display: flex; align-items: center; gap: 10px; }
+    .user-info { display: flex; align-items: center; gap: 8px; }
     .user-avatar {
-      width: 30px; height: 30px;
-      border-radius: 50%;
-      background: var(--accent);
-      color: #fff;
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--accent); color: #fff;
       display: flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 700; flex-shrink: 0;
+      font-size: 11px; font-weight: 700; flex-shrink: 0;
     }
-    .user-name { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .btn-link { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; padding: 4px; }
+    .user-name {
+      flex: 1; font-size: 12px; color: var(--text-sub);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .btn-link {
+      background: none; border: none; color: var(--text-muted);
+      cursor: pointer; font-size: 12px; padding: 2px;
+    }
     .btn-link:hover { color: var(--text); }
 
     /* ---- Main ---- */
     .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
     .main-header {
-      padding: 14px 20px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-shrink: 0;
+      padding: 14px 20px 12px;
+      border-bottom: 0.5px solid var(--border);
+      flex-shrink: 0; background: var(--bg);
     }
-    .main-header h1 { font-size: 16px; font-weight: 600; flex: 1; }
-    .header-actions { display: flex; gap: 8px; align-items: center; }
+    .main-header-top {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+    }
+    .main-title { font-size: 16px; font-weight: 500; flex: 1; }
+    .header-actions { display: flex; gap: 6px; align-items: center; }
 
-    .main-content { flex: 1; overflow-y: auto; padding: 20px; }
+    .header-btn {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 12px; padding: 5px 10px; border-radius: 6px;
+      border: 0.5px solid var(--border-med); background: var(--surface);
+      color: var(--text-sub); cursor: pointer; transition: all 0.12s;
+    }
+    .header-btn:hover { color: var(--text); border-color: var(--border-strong); }
+
+    .progress-label { font-size: 11px; color: var(--text-muted); margin-bottom: 5px; }
+    .progress-bar-wrap { height: 3px; background: var(--border); border-radius: 2px; }
+    .progress-bar {
+      height: 3px; background: var(--accent); border-radius: 2px;
+      transition: width 0.3s ease;
+    }
+
+    .main-content { flex: 1; overflow-y: auto; padding: 16px 20px; }
+    .items-wrap { max-width: 680px; }
 
     /* ---- Empty state ---- */
     .empty-state {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      height: 100%; color: var(--text-muted); gap: 12px; text-align: center;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; height: 100%;
+      color: var(--text-muted); gap: 8px; text-align: center;
     }
-    .empty-state svg { opacity: 0.3; }
-    .empty-state p { font-size: 15px; }
+    .empty-state p { font-size: 14px; }
 
-    /* ---- Items ---- */
-    .items-list { display: flex; flex-direction: column; gap: 8px; max-width: 760px; }
-
-    .item-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 14px 16px;
-      display: flex;
-      gap: 12px;
-      align-items: flex-start;
-      transition: border-color 0.15s, opacity 0.15s;
-      cursor: default;
+    /* ---- Item card ---- */
+    .item {
+      border: 0.5px solid var(--border); border-radius: var(--radius);
+      margin-bottom: 6px; background: var(--surface); overflow: hidden;
     }
-    .item-card.dragging { opacity: 0.4; }
-    .item-card.drag-over { border-color: var(--accent); }
+    .item.done .item-main { opacity: 0.65; }
+    .item.dragging { opacity: 0.4; }
+    .item.drag-over { border-color: var(--accent); }
+
+    .item-main {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 10px 12px;
+    }
 
     .drag-handle {
-      color: var(--text-muted);
-      cursor: grab;
-      padding: 2px 0;
-      flex-shrink: 0;
-      user-select: none;
+      color: var(--text-muted); cursor: grab; flex-shrink: 0;
+      user-select: none; font-size: 13px; opacity: 0.45; margin-top: 3px;
     }
     .drag-handle:active { cursor: grabbing; }
 
-    .item-checkbox {
-      width: 18px; height: 18px;
-      border: 2px solid var(--border);
-      border-radius: 50%;
-      flex-shrink: 0;
-      margin-top: 2px;
-      cursor: pointer;
+    .checkbox {
+      width: 17px; height: 17px;
+      border: 0.5px solid var(--border-strong);
+      border-radius: 4px; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
-      transition: all 0.15s;
+      margin-top: 2px; cursor: pointer;
+      transition: background 0.12s, border-color 0.12s;
     }
-    .item-checkbox.completed {
-      background: var(--accent);
-      border-color: var(--accent);
-    }
-    .item-checkbox.completed::after {
-      content: '';
-      width: 6px; height: 10px;
-      border: 2px solid #fff;
-      border-top: none; border-left: none;
-      transform: rotate(45deg) translateY(-1px);
-    }
+    .item.done .checkbox { background: var(--accent); border-color: var(--accent); }
+    .checkmark { color: #fff; font-size: 10px; font-weight: 700; line-height: 1; }
 
     .item-body { flex: 1; min-width: 0; }
-    .item-title {
-      font-size: 14px;
-      font-weight: 500;
-      word-break: break-word;
+    .item-text {
+      font-size: 14px; color: var(--text); line-height: 1.5; word-break: break-word;
     }
-    .item-title.done { text-decoration: line-through; color: var(--text-muted); }
-    .item-desc { font-size: 12px; color: var(--text-muted); margin-top: 4px; word-break: break-word; }
-
-    .item-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
-
-    .pic-chip {
-      background: rgba(255,255,255,0.08);
-      border-radius: 12px;
-      padding: 2px 8px;
-      font-size: 11px;
-      color: var(--text-muted);
-      display: flex; align-items: center; gap: 4px;
-    }
-    .pic-chip button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; line-height: 1; padding: 0; }
-    .pic-chip button:hover { color: var(--danger); }
-
-    .completion-badge {
-      font-size: 11px;
-      color: var(--accent);
-      background: rgba(16,163,127,0.1);
-      border-radius: 12px;
-      padding: 2px 8px;
+    .item.done .item-text { text-decoration: line-through; color: var(--text-muted); }
+    .item-desc {
+      font-size: 12px; color: var(--text-sub); margin-top: 6px;
+      line-height: 1.6; padding: 7px 10px;
+      background: var(--bg); border-radius: 5px;
+      border-left: 2px solid var(--border-strong);
     }
 
-    .item-actions { display: flex; gap: 4px; flex-shrink: 0; margin-top: 1px; }
+    .item-actions { display: flex; gap: 2px; flex-shrink: 0; }
     .btn-icon {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      cursor: pointer;
-      padding: 4px 6px;
-      border-radius: 5px;
-      font-size: 13px;
-      line-height: 1;
-      transition: all 0.1s;
+      background: none; border: none; cursor: pointer;
+      padding: 3px 6px; border-radius: 5px;
+      font-size: 12px; color: var(--text-muted); transition: all 0.1s;
     }
-    .btn-icon:hover { background: rgba(255,255,255,0.08); color: var(--text); }
-    .btn-icon.danger:hover { background: rgba(239,68,68,0.12); color: var(--danger); }
+    .btn-icon:hover { background: rgba(0,0,0,0.06); color: var(--text); }
+    .btn-icon.danger:hover { background: rgba(226,75,74,0.1); color: var(--danger); }
+    @media (prefers-color-scheme: dark) {
+      .btn-icon:hover { background: rgba(255,255,255,0.08); }
+      .btn-icon.danger:hover { background: rgba(226,75,74,0.15); }
+    }
 
-    /* ---- Add item bar ---- */
-    .add-item-bar {
-      max-width: 760px;
-      margin-top: 12px;
+    .item-footer {
+      padding: 7px 12px; border-top: 0.5px solid var(--border);
+      background: var(--surface-sub);
+      display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
     }
+    .footer-field {
+      display: flex; align-items: center; gap: 5px;
+      flex: 1; min-width: 160px; flex-wrap: wrap;
+    }
+    .footer-label { font-size: 11px; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+    .pic-chip {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: 11px; color: var(--text-sub);
+      background: rgba(0,0,0,0.05); border-radius: 10px; padding: 1px 7px;
+    }
+    @media (prefers-color-scheme: dark) {
+      .pic-chip { background: rgba(255,255,255,0.07); }
+    }
+    .pic-chip button {
+      background: none; border: none; cursor: pointer;
+      color: var(--text-muted); font-size: 13px; padding: 0; line-height: 1;
+    }
+    .pic-chip button:hover { color: var(--danger); }
+    .assign-btn {
+      font-size: 11px; padding: 1px 7px; border-radius: 4px;
+      border: 0.5px solid var(--border-med); background: var(--surface);
+      color: var(--text-sub); cursor: pointer; white-space: nowrap;
+    }
+    .assign-btn:hover { color: var(--text); border-color: var(--border-strong); }
+    .done-name { font-size: 11px; font-weight: 500; color: var(--accent); }
+    .done-time { font-size: 11px; color: var(--text-muted); }
+    .done-empty { font-size: 11px; color: var(--text-muted); font-style: italic; }
+
+    /* ---- Add item ---- */
     .btn-add-item {
-      width: 100%;
-      padding: 10px 16px;
+      width: 100%; padding: 9px 14px; margin-top: 8px;
       background: transparent;
-      border: 1px dashed var(--border);
-      border-radius: var(--radius);
-      color: var(--text-muted);
-      cursor: pointer;
-      font-size: 13px;
-      text-align: left;
+      border: 0.5px dashed var(--border-strong);
+      border-radius: var(--radius); color: var(--text-muted);
+      cursor: pointer; font-size: 13px; text-align: left;
       transition: all 0.15s;
     }
-    .btn-add-item:hover { border-color: var(--accent); color: var(--accent); background: rgba(16,163,127,0.05); }
+    .btn-add-item:hover {
+      border-color: var(--accent); color: var(--accent);
+      background: var(--accent-bg);
+    }
 
     /* ---- Auth page ---- */
     .auth-page {
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--main-bg);
+      height: 100vh; display: flex;
+      align-items: center; justify-content: center; background: var(--bg);
     }
     .auth-card {
-      width: 360px;
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 32px;
+      width: 360px; max-width: 90vw;
+      background: var(--surface); border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg); padding: 28px;
     }
-    .auth-card h2 { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
-    .auth-card p { color: var(--text-muted); font-size: 13px; margin-bottom: 24px; }
+    .auth-card h2 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+    .auth-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
 
     /* ---- Forms ---- */
-    .form-group { margin-bottom: 14px; }
-    .form-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 5px; font-weight: 500; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label {
+      display: block; font-size: 11px; color: var(--text-muted);
+      margin-bottom: 4px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em;
+    }
     .form-group input,
     .form-group textarea,
     .form-group select {
-      width: 100%;
-      background: var(--input-bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 9px 12px;
-      color: var(--text);
-      font-size: 13px;
-      font-family: inherit;
-      outline: none;
-      transition: border-color 0.15s;
-      resize: vertical;
+      width: 100%; background: var(--bg);
+      border: 0.5px solid var(--border-med);
+      border-radius: 6px; padding: 8px 10px;
+      color: var(--text); font-size: 13px; font-family: inherit;
+      outline: none; transition: border-color 0.15s; resize: vertical;
     }
     .form-group input:focus,
     .form-group textarea:focus,
-    .form-group select:focus { border-color: var(--accent); }
-    .form-group select option { background: var(--input-bg); }
+    .form-group select:focus { border-color: var(--accent); background: var(--surface); }
+    .form-group select option { background: var(--surface); }
 
-    .error-msg { color: var(--danger); font-size: 12px; margin-top: 10px; text-align: center; }
+    .error-msg { color: var(--danger); font-size: 12px; margin-top: 8px; }
 
-    .btn { padding: 9px 16px; border-radius: 6px; border: none; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
-    .btn-primary { background: var(--accent); color: #fff; }
-    .btn-primary:hover { background: var(--accent-hover); }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-secondary { background: rgba(255,255,255,0.08); color: var(--text); }
-    .btn-secondary:hover { background: rgba(255,255,255,0.12); }
-    .btn-danger { background: rgba(239,68,68,0.15); color: var(--danger); }
-    .btn-danger:hover { background: rgba(239,68,68,0.25); }
-
+    .btn {
+      padding: 7px 14px; border-radius: 6px;
+      border: 0.5px solid var(--border-med);
+      font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.12s;
+    }
+    .btn-primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+    .btn-primary:hover { opacity: 0.85; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-secondary { background: var(--surface); color: var(--text); }
+    .btn-secondary:hover { background: var(--bg); }
     .btn-block { width: 100%; }
-    .auth-switch { text-align: center; margin-top: 16px; font-size: 12px; color: var(--text-muted); }
-    .auth-switch a { color: var(--accent); cursor: pointer; text-decoration: none; }
-    .auth-switch a:hover { text-decoration: underline; }
+    .auth-switch { text-align: center; margin-top: 14px; font-size: 12px; color: var(--text-muted); }
+    .auth-switch a { color: var(--accent); cursor: pointer; }
 
     /* ---- Modals ---- */
     .modal-backdrop {
       position: fixed; inset: 0;
-      background: rgba(0,0,0,0.6);
+      background: rgba(0,0,0,0.25);
       display: flex; align-items: center; justify-content: center;
-      z-index: 100;
-      padding: 20px;
+      z-index: 100; padding: 20px;
     }
     .modal {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 24px;
-      width: 100%;
-      max-width: 440px;
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg); padding: 20px;
+      width: 100%; max-width: 400px;
     }
-    .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 20px; }
-    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+    .modal h3 { font-size: 15px; font-weight: 500; }
+    .modal-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; margin-bottom: 16px; line-height: 1.5; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+    .modal-body { margin-top: 14px; }
 
-    /* ---- Visibility toggle in header ---- */
-    .vis-toggle {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 5px 10px;
-      color: var(--text-muted);
-      font-size: 12px;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .vis-toggle:hover { background: rgba(255,255,255,0.1); color: var(--text); }
-
-    .btn-copy-link {
-      display: flex; align-items: center; gap: 5px;
-      background: none;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 5px 10px;
-      color: var(--text-muted);
-      font-size: 12px;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .btn-copy-link:hover { border-color: var(--accent); color: var(--accent); }
-
-    /* ---- Completion info ---- */
-    .completion-info { font-size: 11px; color: var(--accent); margin-top: 4px; }
-
-    /* ---- Spinner ---- */
-    .loading-screen {
-      height: 100vh;
-      display: flex; align-items: center; justify-content: center;
-      color: var(--text-muted);
-    }
-
-    /* ---- Notification toast ---- */
+    /* ---- Toast ---- */
     .toast {
-      position: fixed; bottom: 24px; right: 24px;
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 16px;
-      font-size: 13px;
-      z-index: 200;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      position: fixed; bottom: 20px; right: 20px;
+      background: var(--surface); border: 0.5px solid var(--border);
+      border-radius: 8px; padding: 9px 14px;
+      font-size: 13px; z-index: 200;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
     }
     .toast.success { border-left: 3px solid var(--accent); }
     .toast.error { border-left: 3px solid var(--danger); }
 
+    .loading-screen {
+      height: 100vh; display: flex; align-items: center;
+      justify-content: center; color: var(--text-muted); font-size: 13px;
+    }
+
     [x-cloak] { display: none !important; }
+
+    /* ---- Non-owner view ---- */
+    .name-setup {
+      background: var(--surface); border: 0.5px solid var(--border-med);
+      border-radius: var(--radius-lg); padding: 10px 14px; margin-bottom: 14px;
+      display: flex; gap: 10px; align-items: center;
+    }
+    .name-setup label { font-size: 13px; color: var(--text-sub); white-space: nowrap; }
+    .name-setup input {
+      flex: 1; font-size: 13px; padding: 6px 10px;
+      border: 0.5px solid var(--border-med); border-radius: 6px;
+      background: var(--bg); color: var(--text); outline: none;
+    }
+    .name-setup input:focus { border-color: var(--border-strong); background: var(--surface); }
+    .footer-name { font-size: 11px; font-weight: 500; color: var(--text); }
+    .footer-name.empty { color: var(--text-muted); font-weight: 400; font-style: italic; }
+    .item-main-clickable { cursor: pointer; user-select: none; }
+    .item-main-clickable:hover { background: var(--bg); }
   </style>
 </head>
 <body x-data="app" x-init="init()" x-cloak>
 
-  <!-- Loading -->
   <div class="loading-screen" x-show="loading">Loading...</div>
 
-  <!-- Auth page (not logged in, no public project active) -->
+  <!-- Auth page -->
   <div class="auth-page" x-show="!loading && !user && !activeProject">
     <div class="auth-card">
       <h2 x-text="authMode === 'login' ? 'Sign in' : 'Create account'"></h2>
-      <p>Group Checklist</p>
+      <p class="auth-sub">Group Checklist</p>
       <div class="form-group">
         <label>Username</label>
-        <input type="text" x-model="authForm.username" @keyup.enter="submitAuth()" placeholder="your_username" autocomplete="username" />
+        <input type="text" x-model="authForm.username" @keyup.enter="submitAuth()" placeholder="username" autocomplete="username" />
       </div>
       <div class="form-group">
         <label>Password</label>
         <input type="password" x-model="authForm.password" @keyup.enter="submitAuth()" placeholder="••••••••" autocomplete="current-password" />
       </div>
       <p class="error-msg" x-show="authError" x-text="authError"></p>
-      <button class="btn btn-primary btn-block" style="margin-top:4px" @click="submitAuth()" :disabled="authLoading">
+      <button class="btn btn-primary btn-block" style="margin-top:8px" @click="submitAuth()" :disabled="authLoading">
         <span x-text="authLoading ? 'Please wait...' : (authMode === 'login' ? 'Sign in' : 'Create account')"></span>
       </button>
       <p class="auth-switch">
@@ -403,18 +395,18 @@
     </div>
   </div>
 
-  <!-- Main app layout -->
+  <!-- Main layout -->
   <div class="layout" x-show="!loading && (user || activeProject)">
 
     <!-- Sidebar -->
     <aside class="sidebar">
       <div class="sidebar-header">
-        <div class="sidebar-title">Group Checklist</div>
+        <div class="sidebar-brand">Group Checklist</div>
       </div>
 
-      <div style="padding: 10px 6px 4px;">
-        <button class="btn-new-project" @click="user ? openModal('createProject') : null" x-show="user">
-          <span style="font-size:16px">+</span> New project
+      <div style="padding: 8px 6px 4px;">
+        <button class="btn-new-project" @click="openModal('createProject')" x-show="user">
+          + New project
         </button>
       </div>
 
@@ -427,12 +419,15 @@
                 <span class="badge-vis" :class="p.visibility === 'public' ? 'badge-public' : 'badge-private'" x-text="p.visibility === 'public' ? 'pub' : 'priv'"></span>
               </div>
             </template>
-            <div style="padding: 16px 12px; color: var(--text-muted); font-size: 12px;" x-show="projects.length === 0">No projects yet.</div>
+            <div style="padding: 12px 10px; color: var(--text-muted); font-size: 12px;" x-show="projects.length === 0">
+              No projects yet.
+            </div>
           </div>
         </template>
         <template x-if="!user && activeProject">
-          <div style="padding: 12px; color: var(--text-muted); font-size: 12px;">
-            Viewing shared project. <a href="#" style="color: var(--accent);" @click.prevent="authMode='login'">Sign in</a> to manage your own.
+          <div style="padding: 10px; color: var(--text-muted); font-size: 12px; line-height: 1.6;">
+            Viewing shared project.<br>
+            <a href="#" style="color: var(--accent);" @click.prevent="authMode='login'">Sign in</a> to manage your own.
           </div>
         </template>
       </div>
@@ -448,116 +443,170 @@
         <template x-if="!user">
           <div style="font-size:12px; color: var(--text-muted);">
             Guest: <span x-text="guestName || 'not set'"></span>
-            <button class="btn-link" style="margin-left:6px;" @click="openModal('guestName')">change</button>
+            <button class="btn-link" style="margin-left:4px;" @click="openModal('guestName')">change</button>
           </div>
         </template>
       </div>
     </aside>
 
-    <!-- Main content -->
+    <!-- Main -->
     <div class="main">
 
-      <!-- No project selected -->
       <div class="empty-state" x-show="!activeProject">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
-        <p x-show="user">Select a project or create a new one.</p>
+        <p x-show="user">Select a project or create one.</p>
         <p x-show="!user">Open a shared project link to get started.</p>
       </div>
 
-      <!-- Project view -->
       <template x-if="activeProject">
         <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
 
           <!-- Header -->
           <div class="main-header">
-            <h1 x-text="activeProject.name"></h1>
-            <div class="header-actions">
-              <!-- Visibility badge / toggle (owner only) -->
-              <template x-if="activeProject.is_owner">
-                <button class="vis-toggle" @click="toggleVisibility()" :title="activeProject.visibility === 'public' ? 'Click to make private' : 'Click to make public'">
-                  <span x-text="activeProject.visibility === 'public' ? '🌐 Public' : '🔒 Private'"></span>
-                </button>
-              </template>
-              <template x-if="!activeProject.is_owner">
-                <span class="badge-vis" :class="activeProject.visibility === 'public' ? 'badge-public' : 'badge-private'" style="padding:5px 10px;" x-text="activeProject.visibility === 'public' ? '🌐 Public' : '🔒 Private'"></span>
-              </template>
-
-              <!-- Copy link -->
-              <button class="btn-copy-link" @click="copyLink()" title="Copy project link">
-                🔗 Copy link
-              </button>
-
-              <!-- Delete project (owner only) -->
-              <template x-if="activeProject.is_owner">
-                <button class="btn-icon danger" title="Delete project" @click="deleteProject()">🗑</button>
-              </template>
+            <div class="main-header-top">
+              <h1 class="main-title" x-text="activeProject.name"></h1>
+              <div class="header-actions">
+                <template x-if="activeProject.is_owner">
+                  <button class="header-btn" @click="toggleVisibility()">
+                    <span x-text="activeProject.visibility === 'public' ? '🌐 Public' : '🔒 Private'"></span>
+                  </button>
+                </template>
+                <template x-if="!activeProject.is_owner">
+                  <span class="header-btn" style="cursor:default">
+                    <span x-text="activeProject.visibility === 'public' ? '🌐 Public' : '🔒 Private'"></span>
+                  </span>
+                </template>
+                <button class="header-btn" @click="copyLink()">🔗 Copy link</button>
+                <template x-if="activeProject.is_owner">
+                  <button class="btn-icon danger" style="padding:5px 8px;" @click="deleteProject()" title="Delete project">🗑</button>
+                </template>
+              </div>
+            </div>
+            <p class="progress-label" x-text="items.filter(i=>i.completion).length + ' of ' + items.length + ' done'"></p>
+            <div class="progress-bar-wrap">
+              <div class="progress-bar" :style="'width:' + (items.length ? Math.round(items.filter(i=>i.completion).length / items.length * 100) : 0) + '%'"></div>
             </div>
           </div>
 
-          <!-- Items list -->
+          <!-- Items -->
           <div class="main-content">
-            <div class="items-list">
-              <template x-for="(item, index) in items" :key="item.id">
-                <div
-                  class="item-card"
-                  :class="{ dragging: draggingIndex === index, 'drag-over': dragOverIndex === index && draggingIndex !== index }"
-                  draggable="true"
-                  @dragstart="dragStart($event, index)"
-                  @dragover.prevent="dragOver($event, index)"
-                  @drop.prevent="drop($event, index)"
-                  @dragend="dragEnd()"
-                >
-                  <!-- Drag handle -->
-                  <span class="drag-handle" title="Drag to reorder">⣿</span>
+            <div class="items-wrap">
 
-                  <!-- Checkbox -->
-                  <div
-                    class="item-checkbox"
-                    :class="{ completed: !!item.completion }"
-                    @click="item.completion ? uncompleteItem(item) : openCompleteModal(item)"
-                    :title="item.completion ? 'Click to undo completion' : 'Click to complete'"
-                  ></div>
+              <!-- OWNER VIEW: drag, edit, delete, add item -->
+              <template x-if="activeProject.is_owner">
+                <div>
+                  <template x-for="(item, index) in items" :key="item.id">
+                    <div
+                      class="item"
+                      :class="{ done: !!item.completion, dragging: draggingIndex === index, 'drag-over': dragOverIndex === index && draggingIndex !== index }"
+                      draggable="true"
+                      @dragstart="dragStart($event, index)"
+                      @dragover.prevent="dragOver($event, index)"
+                      @drop.prevent="drop($event, index)"
+                      @dragend="dragEnd()"
+                    >
+                      <div class="item-main">
+                        <span class="drag-handle" title="Drag to reorder">⣿</span>
 
-                  <!-- Body -->
-                  <div class="item-body">
-                    <div class="item-title" :class="{ done: !!item.completion }" x-text="item.title"></div>
-                    <div class="item-desc" x-show="item.description" x-text="item.description"></div>
+                        <div
+                          class="checkbox"
+                          @click="item.completion ? uncompleteItem(item) : openCompleteModal(item)"
+                          :title="item.completion ? 'Undo completion' : 'Mark as complete'"
+                        >
+                          <span class="checkmark" x-show="item.completion">✓</span>
+                        </div>
 
-                    <div class="item-meta">
-                      <!-- PICs -->
-                      <template x-for="pic in item.pics" :key="pic.id">
-                        <span class="pic-chip">
-                          👤 <span x-text="pic.name"></span>
-                          <button @click="removePic(item, pic)" title="Remove PIC">×</button>
-                        </span>
-                      </template>
-                      <!-- Add PIC -->
-                      <button class="btn-icon" style="font-size:11px; padding:2px 7px;" @click="openAddPicModal(item)" title="Add PIC">+ PIC</button>
+                        <div class="item-body">
+                          <div class="item-text" x-text="item.title"></div>
+                          <div class="item-desc" x-show="item.description" x-text="item.description"></div>
+                        </div>
 
-                      <!-- Completion info -->
-                      <template x-if="item.completion">
-                        <span class="completion-badge" :title="`Completed at ${new Date(item.completion.completed_at).toLocaleString()}`">
-                          ✓ <span x-text="item.completion.done_by_name"></span>
-                          <template x-if="item.completion.notes">
-                            <span x-text="' — ' + item.completion.notes"></span>
+                        <div class="item-actions">
+                          <button class="btn-icon" @click.stop="openEditItemModal(item)" title="Edit">✏</button>
+                          <button class="btn-icon danger" @click.stop="deleteItem(item)" title="Delete">✕</button>
+                        </div>
+                      </div>
+
+                      <div class="item-footer">
+                        <div class="footer-field">
+                          <span class="footer-label">PIC:</span>
+                          <template x-for="pic in item.pics" :key="pic.id">
+                            <span class="pic-chip">
+                              <span x-text="pic.name"></span>
+                              <button @click.stop="removePic(item, pic)" title="Remove">×</button>
+                            </span>
                           </template>
-                        </span>
-                      </template>
+                          <button class="assign-btn" @click.stop="openAddPicModal(item)">+ add</button>
+                        </div>
+                        <div class="footer-field">
+                          <span class="footer-label">Done by:</span>
+                          <template x-if="item.completion">
+                            <span class="done-name" x-text="item.completion.done_by_name"></span>
+                          </template>
+                          <template x-if="item.completion">
+                            <span class="done-time" x-text="new Date(item.completion.completed_at).toLocaleDateString('en-GB', {day:'numeric',month:'short'})"></span>
+                          </template>
+                          <template x-if="!item.completion">
+                            <span class="done-empty">-</span>
+                          </template>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  </template>
 
-                  <!-- Actions -->
-                  <div class="item-actions">
-                    <button class="btn-icon" title="Edit" @click="openEditItemModal(item)">✏️</button>
-                    <button class="btn-icon danger" title="Delete" @click="deleteItem(item)">🗑</button>
-                  </div>
+                  <button class="btn-add-item" @click="openModal('addItem')">+ Add checklist item</button>
                 </div>
               </template>
-            </div>
 
-            <!-- Add item -->
-            <div class="add-item-bar">
-              <button class="btn-add-item" @click="openModal('addItem')">+ Add checklist item</button>
+              <!-- NON-OWNER VIEW: assign PIC + complete only, matches reference design -->
+              <template x-if="!activeProject.is_owner">
+                <div>
+                  <!-- Global name setup for guests -->
+                  <template x-if="!user">
+                    <div class="name-setup">
+                      <label for="nonowner-name">Nama kamu:</label>
+                      <input id="nonowner-name" type="text" x-model="guestName" @input="localStorage.setItem('guestName', $event.target.value)" placeholder="Masukkan namamu dulu..." />
+                    </div>
+                  </template>
+
+                  <template x-for="(item, index) in items" :key="item.id">
+                    <div class="item" :class="{ done: !!item.completion }">
+                      <div class="item-main item-main-clickable" @click="item.completion ? uncompleteItem(item) : openNonOwnerComplete(item)">
+                        <div class="checkbox">
+                          <span class="checkmark" x-show="item.completion">✓</span>
+                        </div>
+                        <div class="item-body">
+                          <div class="item-text" x-text="item.title"></div>
+                          <div class="item-desc" x-show="item.description" x-text="item.description"></div>
+                        </div>
+                      </div>
+
+                      <div class="item-footer">
+                        <div class="footer-field">
+                          <span class="footer-label">Penanggung jawab:</span>
+                          <span :class="item.pics.length > 0 ? 'footer-name' : 'footer-name empty'" x-text="item.pics.length > 0 ? item.pics.map(p => p.name).join(', ') : 'Belum ditentukan'"></span>
+                          <button class="assign-btn" @click.stop="openNonOwnerPic(item)">atur</button>
+                        </div>
+                        <div class="footer-field">
+                          <span class="footer-label">Dikerjakan oleh:</span>
+                          <template x-if="item.completion">
+                            <span class="done-name" x-text="item.completion.done_by_name"></span>
+                          </template>
+                          <template x-if="item.completion">
+                            <span class="done-time" x-text="new Date(item.completion.completed_at).toLocaleDateString('id-ID',{day:'numeric',month:'short'}) + ', ' + new Date(item.completion.completed_at).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})"></span>
+                          </template>
+                          <template x-if="!item.completion">
+                            <span class="done-empty">-</span>
+                          </template>
+                          <template x-if="item.completion">
+                            <button class="assign-btn" @click.stop="openNonOwnerComplete(item)">edit</button>
+                          </template>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </template>
+
             </div>
           </div>
 
@@ -567,15 +616,17 @@
     </div>
   </div>
 
-  <!-- ===================== MODALS ===================== -->
+  <!-- ===== MODALS ===== -->
 
-  <!-- Guest name prompt -->
+  <!-- Guest name -->
   <div class="modal-backdrop" x-show="modal === 'guestName'" @click.self="closeModal()">
     <div class="modal">
       <h3>Your display name</h3>
-      <div class="form-group">
-        <label>Name (used for all actions)</label>
-        <input type="text" x-model="guestNameInput" @keyup.enter="saveGuestName()" placeholder="e.g. John" />
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Name (used for all actions)</label>
+          <input type="text" x-model="guestNameInput" @keyup.enter="saveGuestName()" placeholder="Your name" />
+        </div>
       </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" @click="closeModal()">Cancel</button>
@@ -588,18 +639,20 @@
   <div class="modal-backdrop" x-show="modal === 'createProject'" @click.self="closeModal()">
     <div class="modal">
       <h3>New project</h3>
-      <div class="form-group">
-        <label>Project name</label>
-        <input type="text" x-model="createProjectForm.name" @keyup.enter="createProject()" placeholder="e.g. Sprint Checklist" />
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Name</label>
+          <input type="text" x-model="createProjectForm.name" @keyup.enter="createProject()" placeholder="Project name" />
+        </div>
+        <div class="form-group">
+          <label>Visibility</label>
+          <select x-model="createProjectForm.visibility">
+            <option value="private">Private (owner only)</option>
+            <option value="public">Public (anyone with link)</option>
+          </select>
+        </div>
+        <p class="error-msg" x-show="modalError" x-text="modalError"></p>
       </div>
-      <div class="form-group">
-        <label>Visibility</label>
-        <select x-model="createProjectForm.visibility">
-          <option value="private">Private (owner only)</option>
-          <option value="public">Public (anyone with link)</option>
-        </select>
-      </div>
-      <p class="error-msg" x-show="modalError" x-text="modalError"></p>
       <div class="modal-actions">
         <button class="btn btn-secondary" @click="closeModal()">Cancel</button>
         <button class="btn btn-primary" @click="createProject()">Create</button>
@@ -611,24 +664,26 @@
   <div class="modal-backdrop" x-show="modal === 'addItem'" @click.self="closeModal()">
     <div class="modal">
       <h3>Add item</h3>
-      <div class="form-group">
-        <label>Title</label>
-        <input type="text" x-model="itemForm.title" @keyup.enter="submitItem()" placeholder="What needs to be done?" />
-      </div>
-      <div class="form-group">
-        <label>Description (optional)</label>
-        <textarea x-model="itemForm.description" rows="3" placeholder="Details..."></textarea>
-      </div>
-      <template x-if="!user">
+      <div class="modal-body">
         <div class="form-group">
-          <label>Your name</label>
-          <input type="text" x-model="itemForm.actor_name" placeholder="Your name" />
+          <label>Title</label>
+          <input type="text" x-model="itemForm.title" @keyup.enter="submitItem()" placeholder="What needs to be done?" />
         </div>
-      </template>
-      <p class="error-msg" x-show="modalError" x-text="modalError"></p>
+        <div class="form-group">
+          <label>Description (optional)</label>
+          <textarea x-model="itemForm.description" rows="3" placeholder="Details..."></textarea>
+        </div>
+        <template x-if="!user">
+          <div class="form-group">
+            <label>Your name</label>
+            <input type="text" x-model="itemForm.actor_name" placeholder="Your name" />
+          </div>
+        </template>
+        <p class="error-msg" x-show="modalError" x-text="modalError"></p>
+      </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" @click="closeModal()">Cancel</button>
-        <button class="btn btn-primary" @click="submitItem()">Add item</button>
+        <button class="btn btn-primary" @click="submitItem()">Add</button>
       </div>
     </div>
   </div>
@@ -637,21 +692,23 @@
   <div class="modal-backdrop" x-show="modal === 'editItem'" @click.self="closeModal()">
     <div class="modal">
       <h3>Edit item</h3>
-      <div class="form-group">
-        <label>Title</label>
-        <input type="text" x-model="itemForm.title" @keyup.enter="submitItem()" />
-      </div>
-      <div class="form-group">
-        <label>Description</label>
-        <textarea x-model="itemForm.description" rows="3"></textarea>
-      </div>
-      <template x-if="!user">
+      <div class="modal-body">
         <div class="form-group">
-          <label>Your name</label>
-          <input type="text" x-model="itemForm.actor_name" placeholder="Your name" />
+          <label>Title</label>
+          <input type="text" x-model="itemForm.title" @keyup.enter="submitItem()" />
         </div>
-      </template>
-      <p class="error-msg" x-show="modalError" x-text="modalError"></p>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea x-model="itemForm.description" rows="3"></textarea>
+        </div>
+        <template x-if="!user">
+          <div class="form-group">
+            <label>Your name</label>
+            <input type="text" x-model="itemForm.actor_name" placeholder="Your name" />
+          </div>
+        </template>
+        <p class="error-msg" x-show="modalError" x-text="modalError"></p>
+      </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" @click="closeModal()">Cancel</button>
         <button class="btn btn-primary" @click="submitItem()">Save</button>
@@ -659,18 +716,18 @@
     </div>
   </div>
 
-  <!-- Complete item -->
+  <!-- Mark complete -->
   <div class="modal-backdrop" x-show="modal === 'complete'" @click.self="closeModal()">
     <div class="modal">
       <h3>Mark as complete</h3>
-      <p style="color:var(--text-muted);font-size:12px;margin-bottom:16px;" x-text="completingItem?.title"></p>
+      <p class="modal-sub" x-text="completingItem?.title"></p>
       <div class="form-group">
         <label>Completed by</label>
         <input type="text" x-model="completeForm.done_by_name" @keyup.enter="submitComplete()" placeholder="Your name" />
       </div>
       <div class="form-group">
         <label>Notes (optional)</label>
-        <textarea x-model="completeForm.notes" rows="3" placeholder="Any notes..."></textarea>
+        <textarea x-model="completeForm.notes" rows="2" placeholder="Any notes..."></textarea>
       </div>
       <p class="error-msg" x-show="modalError" x-text="modalError"></p>
       <div class="modal-actions">
@@ -684,9 +741,9 @@
   <div class="modal-backdrop" x-show="modal === 'addPic'" @click.self="closeModal()">
     <div class="modal">
       <h3>Add PIC</h3>
-      <p style="color:var(--text-muted);font-size:12px;margin-bottom:16px;" x-text="picTargetItem?.title"></p>
+      <p class="modal-sub" x-text="picTargetItem?.title"></p>
       <div class="form-group">
-        <label>PIC name</label>
+        <label>Name</label>
         <input type="text" x-model="picForm.name" @keyup.enter="submitPic()" placeholder="Person in charge" />
       </div>
       <template x-if="!user">
@@ -698,12 +755,29 @@
       <p class="error-msg" x-show="modalError" x-text="modalError"></p>
       <div class="modal-actions">
         <button class="btn btn-secondary" @click="closeModal()">Cancel</button>
-        <button class="btn btn-primary" @click="submitPic()">Add PIC</button>
+        <button class="btn btn-primary" @click="submitPic()">Add</button>
       </div>
     </div>
   </div>
 
-  <!-- Toast notification -->
+  <!-- Non-owner assign (PIC / complete) -->
+  <div class="modal-backdrop" x-show="modal === 'nonOwnerAssign'" @click.self="closeModal()">
+    <div class="modal">
+      <h3 x-text="nonOwnerAssignMode === 'pic' ? 'Siapa penanggung jawabnya?' : (nonOwnerAssignItem?.completion ? 'Edit nama pengerjaan' : 'Siapa yang mengerjakan?')"></h3>
+      <p class="modal-sub" x-text="nonOwnerAssignItem?.title?.slice(0, 60) + (nonOwnerAssignItem?.title?.length > 60 ? '...' : '')"></p>
+      <div class="form-group">
+        <label x-text="nonOwnerAssignMode === 'pic' ? 'Nama penanggung jawab' : 'Nama kamu'"></label>
+        <input type="text" x-model="nonOwnerAssignInput" @keyup.enter="submitNonOwnerAssign()" placeholder="Masukkan nama..." />
+      </div>
+      <p class="error-msg" x-show="nonOwnerAssignError" x-text="nonOwnerAssignError"></p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" @click="closeModal()">Batal</button>
+        <button class="btn btn-primary" @click="submitNonOwnerAssign()">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
   <div class="toast" :class="toast.type" x-show="toast.visible" x-text="toast.msg"></div>
 
   <script src="/app.js"></script>
