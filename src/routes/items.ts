@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import sql from "../db";
 import { writeLog } from "../middleware/logger";
-import { broadcastToRoom } from "../index";
-import { getProject, canAccess, isOwner } from "./projects";
+import { broadcastToRoom } from "../ws";
+import { getProject, canAccess, isOwner } from "../lib/access";
 import type { AppEnv } from "../types";
 
 const items = new Hono<AppEnv>();

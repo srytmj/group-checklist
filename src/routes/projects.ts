@@ -3,7 +3,8 @@ import { customAlphabet } from "nanoid";
 import sql from "../db";
 import { authMiddleware } from "./auth";
 import { writeLog } from "../middleware/logger";
-import { broadcastToRoom } from "../index";
+import { broadcastToRoom } from "../ws";
+import { getProject, canAccess, isOwner } from "../lib/access";
 import itemsRouter from "./items";
 import logsRouter from "./logs";
 import type { AppEnv } from "../types";
@@ -12,47 +13,12 @@ const nanoid = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 10);
 
 const projects = new Hono<AppEnv>();
 
-// Apply auth middleware to all project routes (non-blocking)
 projects.use("*", authMiddleware);
 
-// Mount sub-routers
 projects.route("/:slug/items", itemsRouter);
 projects.route("/:slug/logs", logsRouter);
 
-// Helper: fetch project by slug
-async function getProject(slug: string) {
-  const [project] = await sql<
-    {
-      id: string;
-      owner_id: string;
-      name: string;
-      slug: string;
-      visibility: "public" | "private";
-      created_at: string;
-      updated_at: string;
-    }[]
-  >`SELECT * FROM projects WHERE slug = ${slug}`;
-  return project ?? null;
-}
-
-// Helper: check if user can access (read/write) a project
-function canAccess(
-  project: { visibility: string; owner_id: string },
-  userId: string | undefined
-): boolean {
-  if (project.visibility === "public") return true;
-  return project.owner_id === userId;
-}
-
-// Helper: check if user is the owner
-function isOwner(
-  project: { owner_id: string },
-  userId: string | undefined
-): boolean {
-  return !!userId && project.owner_id === userId;
-}
-
-// GET /api/projects — list my projects (requires auth)
+// GET /api/projects
 projects.get("/", async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: "not authenticated" }, 401);
@@ -66,15 +32,12 @@ projects.get("/", async (c) => {
   return c.json(rows);
 });
 
-// POST /api/projects — create project (requires auth)
+// POST /api/projects
 projects.post("/", async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: "not authenticated" }, 401);
 
-  const body = await c.req.json<{
-    name?: string;
-    visibility?: "public" | "private";
-  }>();
+  const body = await c.req.json<{ name?: string; visibility?: "public" | "private" }>();
   const { name = "", visibility = "private" } = body;
 
   if (!name.trim()) return c.json({ error: "name is required" }, 400);
@@ -103,7 +66,7 @@ projects.post("/", async (c) => {
   return c.json(project, 201);
 });
 
-// GET /api/projects/:slug — get project + items + pics + completion state
+// GET /api/projects/:slug
 projects.get("/:slug", async (c) => {
   const slug = c.req.param("slug");
   const user = c.get("user");
@@ -133,14 +96,10 @@ projects.get("/:slug", async (c) => {
     ORDER BY ci.display_order ASC, ci.created_at ASC
   `;
 
-  return c.json({
-    ...project,
-    is_owner: isOwner(project, user?.id),
-    items,
-  });
+  return c.json({ ...project, is_owner: isOwner(project, user?.id), items });
 });
 
-// PATCH /api/projects/:slug — update name or visibility (owner only)
+// PATCH /api/projects/:slug
 projects.patch("/:slug", async (c) => {
   const slug = c.req.param("slug");
   const user = c.get("user");
@@ -150,18 +109,12 @@ projects.patch("/:slug", async (c) => {
   if (!project) return c.json({ error: "not found" }, 404);
   if (!isOwner(project, user.id)) return c.json({ error: "owner only" }, 403);
 
-  const body = await c.req.json<{
-    name?: string;
-    visibility?: "public" | "private";
-  }>();
+  const body = await c.req.json<{ name?: string; visibility?: "public" | "private" }>();
   const updates: Record<string, string> = {};
   const old: Record<string, string> = {};
 
-  if (body.name !== undefined && body.name.trim()) {
-    old.name = project.name;
-    updates.name = body.name.trim();
-  }
-  if (body.visibility !== undefined) {
+  if (body.name?.trim()) { old.name = project.name; updates.name = body.name.trim(); }
+  if (body.visibility) {
     if (!["public", "private"].includes(body.visibility)) {
       return c.json({ error: "visibility must be public or private" }, 400);
     }
@@ -169,9 +122,7 @@ projects.patch("/:slug", async (c) => {
     updates.visibility = body.visibility;
   }
 
-  if (Object.keys(updates).length === 0) {
-    return c.json({ error: "nothing to update" }, 400);
-  }
+  if (Object.keys(updates).length === 0) return c.json({ error: "nothing to update" }, 400);
 
   const [updated] = await sql`
     UPDATE projects
@@ -193,11 +144,10 @@ projects.patch("/:slug", async (c) => {
   });
 
   broadcastToRoom(slug, { event: "project.updated", data: updated });
-
   return c.json(updated);
 });
 
-// DELETE /api/projects/:slug — delete project (owner only)
+// DELETE /api/projects/:slug
 projects.delete("/:slug", async (c) => {
   const slug = c.req.param("slug");
   const user = c.get("user");
@@ -210,9 +160,7 @@ projects.delete("/:slug", async (c) => {
   await sql`DELETE FROM projects WHERE id = ${project.id}`;
 
   broadcastToRoom(slug, { event: "project.deleted", data: { slug } });
-
   return c.json({ ok: true });
 });
 
-export { getProject, canAccess, isOwner };
 export default projects;

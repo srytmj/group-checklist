@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import sql from "../db";
-import { getProject, canAccess, isOwner } from "./projects";
+import { getProject, canAccess, isOwner } from "../lib/access";
 import type { AppEnv } from "../types";
 
 const logs = new Hono<AppEnv>();

@@ -4,30 +4,23 @@ import { logger } from "hono/logger";
 import { createBunWebSocket } from "hono/bun";
 import type { ServerWebSocket } from "bun";
 import { requestMeta } from "./middleware/logger";
+import { rooms, broadcastToRoom } from "./ws";
 import authRoutes from "./routes/auth";
 import projectRoutes from "./routes/projects";
 
+export { broadcastToRoom };
+
 const app = new Hono();
-
-// WebSocket rooms: slug -> Set of raw ws clients
-const rooms = new Map<string, Set<ServerWebSocket<unknown>>>();
-
-export function broadcastToRoom(slug: string, message: object) {
-  const clients = rooms.get(slug);
-  if (!clients || clients.size === 0) return;
-  const payload = JSON.stringify(message);
-  for (const ws of clients) {
-    try {
-      ws.send(payload);
-    } catch {
-      clients.delete(ws);
-    }
-  }
-}
 
 // Global middleware
 app.use("*", logger());
 app.use("*", requestMeta);
+
+// Global error handler
+app.onError((err, c) => {
+  console.error(`[error] ${c.req.method} ${c.req.path}:`, err);
+  return c.json({ error: err.message || "Internal Server Error" }, 500);
+});
 
 // Health check
 app.get("/health", (c) => c.json({ ok: true, ts: new Date().toISOString() }));
@@ -57,7 +50,6 @@ app.get(
         console.log(`[ws] left ${slug}`);
       },
       onMessage(evt) {
-        // Heartbeat: client sends "ping", server sends "pong"
         if (evt.data === "ping") {
           (evt.target as ServerWebSocket<unknown>).send("pong");
         }
@@ -71,8 +63,6 @@ app.get(
 
 // Static files
 app.use("/*", serveStatic({ root: "./public" }));
-
-// SPA fallback
 app.get("*", serveStatic({ path: "./public/index.html" }));
 
 const port = Number(process.env.PORT) || 3000;
