@@ -25,6 +25,12 @@ app.onError((err, c) => {
 // Health check
 app.get("/health", (c) => c.json({ ok: true, ts: new Date().toISOString() }));
 
+// Temporary debug — remove after fixing auth
+app.get("/debug/cookie", (c) => {
+  const cookie = c.req.header("cookie");
+  return c.json({ cookie: cookie ?? null });
+});
+
 // API routes
 app.route("/api/auth", authRoutes);
 app.route("/api/projects", projectRoutes);

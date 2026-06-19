@@ -43,7 +43,7 @@ function parseCookie(cookieHeader: string | null, name: string): string | null {
 }
 
 export async function authMiddleware(c: Context<AppEnv>, next: Next) {
-  const token = parseCookie(c.req.raw.headers.get("cookie"), COOKIE_NAME);
+  const token = parseCookie(c.req.header("cookie") ?? null, COOKIE_NAME);
   c.set("user", null);
 
   if (token) {
