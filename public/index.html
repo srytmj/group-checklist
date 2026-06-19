@@ -348,6 +348,65 @@
       justify-content: center; color: var(--text-muted); font-size: 13px;
     }
 
+    /* ---- Sidebar collapse ---- */
+    .sidebar { transition: width 0.2s ease, min-width 0.2s ease; }
+    .sidebar.collapsed { width: 36px; min-width: 36px; }
+    .sidebar-toggle-row {
+      display: flex; align-items: center; gap: 6px;
+      padding: 12px 10px 6px; flex-shrink: 0;
+    }
+    .sidebar-toggle-row .sidebar-brand { flex: 1; }
+
+    /* ---- Right panel ---- */
+    .right-panel {
+      width: 300px; min-width: 300px; flex-shrink: 0;
+      border-left: 0.5px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow: hidden; background: var(--surface);
+    }
+    .rp-header { padding: 10px 12px; border-bottom: 0.5px solid var(--border); flex-shrink: 0; }
+    .rp-tabs { display: flex; gap: 4px; }
+    .rp-tab {
+      font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 6px;
+      border: none; background: none; cursor: pointer;
+      color: var(--text-muted); transition: all 0.12s;
+    }
+    .rp-tab:hover { color: var(--text); background: var(--item-hover-bg); }
+    .rp-tab.active { background: var(--accent-bg); color: var(--accent); }
+
+    /* ---- Chat ---- */
+    .chat-list { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+    .chat-msg-meta { display: flex; align-items: baseline; gap: 5px; margin-bottom: 2px; }
+    .chat-sender { font-size: 12px; font-weight: 600; color: var(--text); }
+    .chat-ts { font-size: 10px; color: var(--text-muted); }
+    .chat-body { font-size: 13px; color: var(--text); line-height: 1.5; word-break: break-word; }
+    .chat-input-wrap {
+      flex-shrink: 0; padding: 8px 10px; border-top: 0.5px solid var(--border);
+      display: flex; gap: 6px; align-items: center;
+    }
+    .chat-input {
+      flex: 1; font-size: 13px; padding: 6px 10px;
+      border: 0.5px solid var(--border-med); border-radius: 6px;
+      background: var(--bg); color: var(--text); outline: none; font-family: inherit;
+    }
+    .chat-input:focus { border-color: var(--accent); background: var(--surface); }
+    .chat-input:disabled { opacity: 0.5; cursor: not-allowed; }
+    .chat-send {
+      width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%;
+      border: none; background: var(--accent); color: #fff; cursor: pointer;
+      font-size: 14px; display: flex; align-items: center; justify-content: center;
+    }
+    .chat-send:hover { opacity: 0.85; }
+    .chat-send:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ---- Log panel ---- */
+    .log-entry { padding: 9px 12px; border-bottom: 0.5px solid var(--border); font-size: 12px; }
+    .log-entry:last-child { border-bottom: none; }
+    .log-actor { font-weight: 500; color: var(--text); }
+    .log-desc { color: var(--text-muted); }
+    .log-ts { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .rp-empty { text-align: center; color: var(--text-muted); font-size: 12px; padding: 24px 16px; }
+
     [x-cloak] { display: none !important; }
   </style>
 </head>
@@ -383,13 +442,17 @@
   <div class="layout" x-show="!loading && (user || activeProject)">
 
     <!-- Sidebar -->
-    <aside class="sidebar">
-      <div class="sidebar-header" style="display:flex;align-items:center;justify-content:space-between;padding-right:10px;">
-        <div class="sidebar-brand">Group Checklist</div>
-        <button class="btn-link" @click="toggleTheme()" :title="isDark ? 'Switch to light' : 'Switch to dark'" style="font-size:15px;line-height:1;padding:3px;">
+    <aside class="sidebar" :class="{ collapsed: !sidebarOpen }">
+      <div class="sidebar-toggle-row">
+        <button class="btn-link" @click="sidebarOpen = !sidebarOpen" :title="sidebarOpen ? 'Collapse' : 'Expand'" style="font-size:17px;flex-shrink:0;padding:0 2px;">
+          <span x-text="sidebarOpen ? '‹' : '›'"></span>
+        </button>
+        <div class="sidebar-brand" x-show="sidebarOpen">Group Checklist</div>
+        <button class="btn-link" @click="toggleTheme()" x-show="sidebarOpen" :title="isDark ? 'Switch to light' : 'Switch to dark'" style="font-size:15px;line-height:1;padding:3px;margin-left:auto;">
           <span x-text="isDark ? '☀' : '🌙'"></span>
         </button>
       </div>
+      <div x-show="sidebarOpen" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
 
       <div style="padding: 8px 6px 4px;">
         <button class="btn-new-project" @click="openModal('createProject')" x-show="user">
@@ -434,6 +497,7 @@
           </div>
         </template>
       </div>
+      </div><!-- /sidebarOpen -->
     </aside>
 
     <!-- Main -->
@@ -474,8 +538,9 @@
             </div>
           </div>
 
-          <!-- Items -->
-          <div class="main-content">
+          <!-- Body: items + right panel -->
+          <div style="flex:1;display:flex;overflow:hidden;">
+          <div class="main-content" style="flex:1;">
             <div class="items-wrap">
 
               <template x-for="(item, index) in items" :key="item.id">
@@ -493,7 +558,7 @@
 
                     <div
                       class="checkbox"
-                      @click="item.completion ? uncompleteItem(item) : (activeProject.is_owner ? openCompleteModal(item) : openNonOwnerComplete(item))"
+                      @click="item.completion ? openUncompleteModal(item) : (activeProject.is_owner ? openCompleteModal(item) : handleNonOwnerCheck(item))"
                       :title="item.completion ? 'Undo completion' : 'Mark as complete'"
                     >
                       <span class="checkmark" x-show="item.completion">✓</span>
@@ -529,7 +594,7 @@
                         <span class="done-name" x-text="item.completion.done_by_name"></span>
                       </template>
                       <template x-if="item.completion">
-                        <span class="done-time" x-text="new Date(item.completion.completed_at).toLocaleDateString('en-GB', {day:'numeric',month:'short'})"></span>
+                        <span class="done-time" x-text="new Date(item.completion.completed_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) + ' · ' + new Date(item.completion.completed_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})"></span>
                       </template>
                       <template x-if="!item.completion">
                         <span class="done-empty">-</span>
@@ -548,6 +613,57 @@
 
             </div>
           </div>
+
+          <!-- Right panel: chat + log -->
+          <div class="right-panel">
+            <div class="rp-header">
+              <div class="rp-tabs">
+                <button class="rp-tab" :class="{ active: rightTab === 'chat' }" @click="rightTab = 'chat'">Chat</button>
+                <template x-if="activeProject.is_owner">
+                  <button class="rp-tab" :class="{ active: rightTab === 'log' }" @click="rightTab = 'log'; loadLogs()">Log</button>
+                </template>
+              </div>
+            </div>
+            <!-- Chat tab -->
+            <template x-if="rightTab === 'chat'">
+              <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+                <div id="chat-messages" style="flex:1;overflow-y:auto;">
+                  <div class="chat-list">
+                    <div class="rp-empty" x-show="messagesLoading">Loading…</div>
+                    <div class="rp-empty" x-show="!messagesLoading && messages.length === 0">No messages yet. Say hi!</div>
+                    <template x-for="msg in messages" :key="msg.id">
+                      <div>
+                        <div class="chat-msg-meta">
+                          <span class="chat-sender" x-text="msg.sender_name"></span>
+                          <span class="chat-ts" x-text="new Date(msg.created_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})"></span>
+                        </div>
+                        <div class="chat-body" x-text="msg.body"></div>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+                <div x-show="!user && !guestName" style="padding:4px 12px 0;font-size:11px;color:var(--text-muted);">Set your name below to chat.</div>
+                <div class="chat-input-wrap">
+                  <input class="chat-input" type="text" x-model="messageInput" @keyup.enter="sendMessage()" placeholder="Message…" :disabled="!user && !guestName" />
+                  <button class="chat-send" @click="sendMessage()" :disabled="!messageInput.trim()">↑</button>
+                </div>
+              </div>
+            </template>
+            <!-- Log tab (owner only) -->
+            <template x-if="rightTab === 'log' && activeProject.is_owner">
+              <div style="flex:1;overflow-y:auto;">
+                <div class="rp-empty" x-show="logsLoading">Loading…</div>
+                <div class="rp-empty" x-show="!logsLoading && logsData.length === 0">No activity yet.</div>
+                <template x-for="entry in logsData" :key="entry.id">
+                  <div class="log-entry">
+                    <div><span class="log-actor" x-text="entry.actor_name"></span><span class="log-desc" x-text="' ' + formatLogAction(entry.action)"></span></div>
+                    <div class="log-ts" x-text="new Date(entry.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) + ' · ' + new Date(entry.created_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})"></div>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+          </div><!-- /body flex -->
 
         </div>
       </template>
@@ -712,6 +828,21 @@
       <div class="modal-actions">
         <button class="btn btn-secondary" @click="closeModal()">Batal</button>
         <button class="btn btn-primary" @click="submitNonOwnerAssign()">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Undo completion -->
+  <div class="modal-backdrop" x-show="modal === 'uncomplete'" @click.self="closeModal()">
+    <div class="modal">
+      <h3>Undo completion?</h3>
+      <p class="modal-sub" x-text="uncomletingItem?.title?.slice(0,80)"></p>
+      <p style="font-size:13px;color:var(--text-muted);margin-top:4px;" x-show="uncomletingItem?.completion">
+        Completed by <span style="font-weight:500;color:var(--text);" x-text="uncomletingItem?.completion?.done_by_name"></span>.
+      </p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" @click="closeModal()">Cancel</button>
+        <button class="btn btn-primary" style="background:var(--danger);border-color:var(--danger);" @click="confirmUncomplete()">Undo</button>
       </div>
     </div>
   </div>

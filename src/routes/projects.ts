@@ -7,6 +7,7 @@ import { broadcastToRoom } from "../ws";
 import { getProject, canAccess, isOwner } from "../lib/access";
 import itemsRouter from "./items";
 import logsRouter from "./logs";
+import messagesRouter from "./messages";
 import type { AppEnv } from "../types";
 
 const nanoid = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 10);
@@ -17,6 +18,7 @@ projects.use("*", authMiddleware);
 
 projects.route("/:slug/items", itemsRouter);
 projects.route("/:slug/logs", logsRouter);
+projects.route("/:slug/messages", messagesRouter);
 
 // GET /api/projects
 projects.get("/", async (c) => {

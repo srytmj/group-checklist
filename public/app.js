@@ -24,6 +24,8 @@ document.addEventListener('alpine:init', () => {
     guestName: '',
     guestNameInput: '',
 
+    sidebarOpen: true,
+
     authMode: 'login',
     authForm: { username: '', password: '' },
     authError: '',
@@ -41,6 +43,8 @@ document.addEventListener('alpine:init', () => {
     editingItem: null,
     completeForm: { done_by_name: '', notes: '' },
     completingItem: null,
+    uncomletingItem: null,
+    pendingCompleteItem: null,
     picForm: { name: '', actor_name: '' },
     picTargetItem: null,
 
@@ -51,6 +55,13 @@ document.addEventListener('alpine:init', () => {
     nonOwnerAssignItem: null,
     nonOwnerAssignInput: '',
     nonOwnerAssignError: '',
+
+    rightTab: 'chat',
+    messages: [],
+    messagesLoading: false,
+    messageInput: '',
+    logsData: [],
+    logsLoading: false,
 
     theme: localStorage.getItem('theme') || 'system',
     get isDark() {
@@ -67,7 +78,10 @@ document.addEventListener('alpine:init', () => {
     // ---- Init ----
     async init() {
       this.guestName = localStorage.getItem('guestName') || '';
+      this.sidebarOpen = localStorage.getItem('sidebarOpen') !== 'false';
       this.applyTheme();
+
+      this.$watch('sidebarOpen', (v) => localStorage.setItem('sidebarOpen', String(v)));
 
       try {
         this.user = await api('GET', '/api/auth/me');
@@ -85,10 +99,14 @@ document.addEventListener('alpine:init', () => {
       const hash = window.location.hash;
       const match = hash.match(/^#\/p\/([a-z0-9]+)$/);
       if (match) {
+        // Fix: also load project list when navigating directly to a project URL
+        if (this.user) await this.loadProjects();
         await this.loadProject(match[1]);
       } else {
         this.activeProject = null;
         this.items = [];
+        this.messages = [];
+        this.logsData = [];
         this.disconnectWs();
         if (this.user) await this.loadProjects();
       }
@@ -103,7 +121,6 @@ document.addEventListener('alpine:init', () => {
         this.user = await api('POST', endpoint, this.authForm);
         this.authForm = { username: '', password: '' };
         await this.loadProjects();
-        // Reload if there was a pending project slug in hash
         await this.handleRoute();
       } catch (e) {
         this.authError = e.message;
@@ -118,6 +135,8 @@ document.addEventListener('alpine:init', () => {
       this.projects = [];
       this.activeProject = null;
       this.items = [];
+      this.messages = [];
+      this.logsData = [];
       this.disconnectWs();
       window.location.hash = '';
     },
@@ -141,7 +160,12 @@ document.addEventListener('alpine:init', () => {
         const project = await api('GET', `/api/projects/${slug}`);
         this.activeProject = project;
         this.items = project.items || [];
+        this.messages = [];
+        this.logsData = [];
+        this.rightTab = 'chat';
         this.connectWs(slug);
+        this.loadMessages();
+        if (project.is_owner) this.loadLogs();
       } catch (e) {
         this.showToast(e.message === 'access denied' ? 'This project is private.' : e.message, 'error');
         this.activeProject = null;
@@ -172,7 +196,6 @@ document.addEventListener('alpine:init', () => {
       try {
         const updated = await api('PATCH', `/api/projects/${this.activeProject.slug}`, { visibility: next });
         this.activeProject = { ...this.activeProject, ...updated };
-        // Sync sidebar
         const idx = this.projects.findIndex(p => p.id === updated.id);
         if (idx !== -1) this.projects[idx].visibility = updated.visibility;
         this.showToast(`Project is now ${updated.visibility}.`);
@@ -188,6 +211,8 @@ document.addEventListener('alpine:init', () => {
         this.projects = this.projects.filter(p => p.id !== this.activeProject.id);
         this.activeProject = null;
         this.items = [];
+        this.messages = [];
+        this.logsData = [];
         this.disconnectWs();
         window.location.hash = '';
         this.showToast('Project deleted.');
@@ -358,13 +383,46 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
-    async uncompleteItem(item) {
-      if (!confirm('Undo completion?')) return;
-      const actorName = this.user?.username ?? this.guestName;
+    openUncompleteModal(item) {
+      this.uncomletingItem = item;
+      this.openModal('uncomplete');
+    },
+
+    async confirmUncomplete() {
+      const item = this.uncomletingItem;
+      if (!item) return;
       try {
         await api('DELETE', `/api/projects/${this.activeProject.slug}/items/${item.id}/complete`);
         const idx = this.items.findIndex(i => i.id === item.id);
         if (idx !== -1) this.items[idx] = { ...this.items[idx], completion: null };
+        this.closeModal();
+        this.uncomletingItem = null;
+      } catch (e) {
+        this.showToast(e.message, 'error');
+        this.closeModal();
+      }
+    },
+
+    // Non-owner checkbox: auto-complete if name already set, else prompt for name first
+    handleNonOwnerCheck(item) {
+      const name = this.user?.username ?? this.guestName;
+      if (!name) {
+        this.pendingCompleteItem = item;
+        this.openModal('guestName');
+        return;
+      }
+      this.directComplete(item);
+    },
+
+    async directComplete(item) {
+      const name = this.user?.username ?? this.guestName;
+      try {
+        const completion = await api('POST', `/api/projects/${this.activeProject.slug}/items/${item.id}/complete`, {
+          done_by_name: name,
+          ...(!this.user ? { actor_name: name } : {}),
+        });
+        const idx = this.items.findIndex(i => i.id === item.id);
+        if (idx !== -1) this.items[idx] = { ...this.items[idx], completion };
       } catch (e) {
         this.showToast(e.message, 'error');
       }
@@ -383,7 +441,7 @@ document.addEventListener('alpine:init', () => {
       this.applyTheme();
     },
 
-    // ---- Non-owner assign (PIC / complete) ----
+    // ---- Non-owner assign (PIC / edit completion name) ----
     openNonOwnerPic(item) {
       this.nonOwnerAssignMode = 'pic';
       this.nonOwnerAssignItem = item;
@@ -442,11 +500,85 @@ document.addEventListener('alpine:init', () => {
       this.guestName = name;
       localStorage.setItem('guestName', name);
       this.closeModal();
+      // If we were blocked on completing an item, do it now
+      if (this.pendingCompleteItem) {
+        const item = this.pendingCompleteItem;
+        this.pendingCompleteItem = null;
+        this.directComplete(item);
+      }
     },
     saveGuestNameSilent(name) {
       if (!name || this.user) return;
       this.guestName = name;
       localStorage.setItem('guestName', name);
+    },
+
+    // ---- Messages (chat) ----
+    async loadMessages() {
+      if (!this.activeProject) return;
+      this.messagesLoading = true;
+      try {
+        const data = await api('GET', `/api/projects/${this.activeProject.slug}/messages`);
+        this.messages = data.messages || [];
+        setTimeout(() => {
+          const el = document.getElementById('chat-messages');
+          if (el) el.scrollTop = el.scrollHeight;
+        }, 50);
+      } catch {
+        // silent
+      } finally {
+        this.messagesLoading = false;
+      }
+    },
+
+    async sendMessage() {
+      const body = this.messageInput.trim();
+      if (!body) return;
+      const senderName = this.user?.username ?? this.guestName;
+      if (!senderName) {
+        this.showToast('Set your name first to send messages.', 'error');
+        return;
+      }
+      this.messageInput = '';
+      try {
+        await api('POST', `/api/projects/${this.activeProject.slug}/messages`, {
+          body,
+          ...(!this.user ? { sender_name: senderName } : {}),
+        });
+      } catch (e) {
+        this.messageInput = body;
+        this.showToast(e.message, 'error');
+      }
+    },
+
+    // ---- Audit logs ----
+    async loadLogs() {
+      if (!this.activeProject?.is_owner) return;
+      this.logsLoading = true;
+      try {
+        const data = await api('GET', `/api/projects/${this.activeProject.slug}/logs?level=public&limit=40`);
+        this.logsData = data.logs || [];
+      } catch {
+        // silent
+      } finally {
+        this.logsLoading = false;
+      }
+    },
+
+    formatLogAction(action) {
+      const map = {
+        'item.created': 'created item',
+        'item.updated': 'updated item',
+        'item.deleted': 'deleted item',
+        'item.completed': 'completed item',
+        'item.uncompleted': 'uncompleted item',
+        'item.pic_added': 'assigned PIC',
+        'item.pic_removed': 'removed PIC',
+        'item.reordered': 'reordered items',
+        'project.created': 'created project',
+        'project.updated': 'updated project',
+      };
+      return map[action] || action;
     },
 
     // ---- Modals ----
@@ -479,7 +611,6 @@ document.addEventListener('alpine:init', () => {
 
       ws.onopen = () => {
         console.log('[ws] connected:', slug);
-        // Heartbeat every 25s
         ws._ping = setInterval(() => { if (ws.readyState === WebSocket.OPEN) ws.send('ping'); }, 25000);
       };
 
@@ -493,7 +624,6 @@ document.addEventListener('alpine:init', () => {
 
       ws.onclose = () => {
         clearInterval(ws._ping);
-        // Reconnect after 3s if still on same project
         if (this.wsSlug === slug) {
           setTimeout(() => { if (this.wsSlug === slug) this.connectWs(slug); }, 3000);
         }
@@ -506,24 +636,30 @@ document.addEventListener('alpine:init', () => {
       if (this.ws) {
         clearInterval(this.ws._ping);
         this.wsSlug = null;
-        this.ws.onclose = null; // prevent reconnect loop
+        this.ws.onclose = null;
         this.ws.close();
         this.ws = null;
       }
     },
 
     handleWsEvent(event, data) {
+      const refreshLogs = () => {
+        if (this.activeProject?.is_owner && this.rightTab === 'log') this.loadLogs();
+      };
       switch (event) {
         case 'item.created':
           if (!this.items.find(i => i.id === data.id)) this.items.push(data);
+          refreshLogs();
           break;
         case 'item.updated': {
           const idx = this.items.findIndex(i => i.id === data.id);
           if (idx !== -1) this.items[idx] = { ...this.items[idx], ...data };
+          refreshLogs();
           break;
         }
         case 'item.deleted':
           this.items = this.items.filter(i => i.id !== data.id);
+          refreshLogs();
           break;
         case 'item.reordered': {
           const map = Object.fromEntries(data.order.map(o => [o.id, o.display_order]));
@@ -535,11 +671,13 @@ document.addEventListener('alpine:init', () => {
         case 'item.completed': {
           const idx = this.items.findIndex(i => i.id === data.item_id);
           if (idx !== -1) this.items[idx] = { ...this.items[idx], completion: data.completion };
+          refreshLogs();
           break;
         }
         case 'item.uncompleted': {
           const idx = this.items.findIndex(i => i.id === data.item_id);
           if (idx !== -1) this.items[idx] = { ...this.items[idx], completion: null };
+          refreshLogs();
           break;
         }
         case 'item.pic_added': {
@@ -547,13 +685,24 @@ document.addEventListener('alpine:init', () => {
           if (idx !== -1 && !this.items[idx].pics.find(p => p.id === data.pic.id)) {
             this.items[idx] = { ...this.items[idx], pics: [...this.items[idx].pics, data.pic] };
           }
+          refreshLogs();
           break;
         }
         case 'item.pic_removed': {
           const idx = this.items.findIndex(i => i.id === data.item_id);
           if (idx !== -1) this.items[idx] = { ...this.items[idx], pics: this.items[idx].pics.filter(p => p.id !== data.pic_id) };
+          refreshLogs();
           break;
         }
+        case 'message.created':
+          if (!this.messages.find(m => m.id === data.id)) {
+            this.messages.push(data);
+            setTimeout(() => {
+              const el = document.getElementById('chat-messages');
+              if (el) el.scrollTop = el.scrollHeight;
+            }, 50);
+          }
+          break;
         case 'project.updated':
           if (this.activeProject) this.activeProject = { ...this.activeProject, ...data };
           break;
@@ -561,6 +710,8 @@ document.addEventListener('alpine:init', () => {
           this.showToast('This project has been deleted.', 'error');
           this.activeProject = null;
           this.items = [];
+          this.messages = [];
+          this.logsData = [];
           this.disconnectWs();
           window.location.hash = '';
           break;
