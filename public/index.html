@@ -23,23 +23,39 @@
       --sidebar-bg: #ebebea;
       --radius: 8px;
       --radius-lg: 12px;
+      /* Component-level tokens for theme switching */
+      --item-hover-bg: rgba(0,0,0,0.05);
+      --item-active-bg: rgba(0,0,0,0.09);
+      --badge-private-bg: rgba(0,0,0,0.06);
+      --btn-icon-hover-bg: rgba(0,0,0,0.06);
+      --btn-icon-danger-hover-bg: rgba(226,75,74,0.1);
+      --pic-chip-bg: rgba(0,0,0,0.05);
     }
 
+    /* Dark theme variables — defined once, applied by system pref or manual toggle */
     @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #1a1a18;
-        --surface: #242422;
-        --surface-sub: #1e1e1c;
-        --text: #e8e8e5;
-        --text-muted: #888780;
-        --text-sub: #b4b2a9;
-        --border: rgba(255,255,255,0.08);
-        --border-med: rgba(255,255,255,0.12);
+      html:not([data-theme="light"]) {
+        --bg: #1a1a18; --surface: #242422; --surface-sub: #1e1e1c;
+        --text: #e8e8e5; --text-muted: #888780; --text-sub: #b4b2a9;
+        --border: rgba(255,255,255,0.08); --border-med: rgba(255,255,255,0.12);
         --border-strong: rgba(255,255,255,0.22);
-        --accent: #6db33f;
-        --accent-bg: rgba(109,179,63,0.08);
-        --sidebar-bg: #141412;
+        --accent: #6db33f; --accent-bg: rgba(109,179,63,0.08); --sidebar-bg: #141412;
+        --item-hover-bg: rgba(255,255,255,0.05); --item-active-bg: rgba(255,255,255,0.1);
+        --badge-private-bg: rgba(255,255,255,0.07);
+        --btn-icon-hover-bg: rgba(255,255,255,0.08); --btn-icon-danger-hover-bg: rgba(226,75,74,0.15);
+        --pic-chip-bg: rgba(255,255,255,0.07);
       }
+    }
+    html[data-theme="dark"] {
+      --bg: #1a1a18; --surface: #242422; --surface-sub: #1e1e1c;
+      --text: #e8e8e5; --text-muted: #888780; --text-sub: #b4b2a9;
+      --border: rgba(255,255,255,0.08); --border-med: rgba(255,255,255,0.12);
+      --border-strong: rgba(255,255,255,0.22);
+      --accent: #6db33f; --accent-bg: rgba(109,179,63,0.08); --sidebar-bg: #141412;
+      --item-hover-bg: rgba(255,255,255,0.05); --item-active-bg: rgba(255,255,255,0.1);
+      --badge-private-bg: rgba(255,255,255,0.07);
+      --btn-icon-hover-bg: rgba(255,255,255,0.08); --btn-icon-danger-hover-bg: rgba(226,75,74,0.15);
+      --pic-chip-bg: rgba(255,255,255,0.07);
     }
 
     html, body {
@@ -83,12 +99,8 @@
       border-radius: 6px; margin-bottom: 1px; color: var(--text);
       transition: background 0.12s; user-select: none;
     }
-    .project-item:hover { background: rgba(0,0,0,0.05); }
-    .project-item.active { background: rgba(0,0,0,0.09); }
-    @media (prefers-color-scheme: dark) {
-      .project-item:hover { background: rgba(255,255,255,0.05); }
-      .project-item.active { background: rgba(255,255,255,0.1); }
-    }
+    .project-item:hover { background: var(--item-hover-bg); }
+    .project-item.active { background: var(--item-active-bg); }
     .project-item-name {
       flex: 1; white-space: nowrap; overflow: hidden;
       text-overflow: ellipsis; font-size: 13px;
@@ -98,10 +110,7 @@
       border-radius: 4px; font-weight: 500; flex-shrink: 0;
     }
     .badge-public { background: var(--accent-bg); color: var(--accent); }
-    .badge-private { background: rgba(0,0,0,0.06); color: var(--text-muted); }
-    @media (prefers-color-scheme: dark) {
-      .badge-private { background: rgba(255,255,255,0.07); }
-    }
+    .badge-private { background: var(--badge-private-bg); color: var(--text-muted); }
 
     .user-info { display: flex; align-items: center; gap: 8px; }
     .user-avatar {
@@ -209,12 +218,8 @@
       padding: 3px 6px; border-radius: 5px;
       font-size: 12px; color: var(--text-muted); transition: all 0.1s;
     }
-    .btn-icon:hover { background: rgba(0,0,0,0.06); color: var(--text); }
-    .btn-icon.danger:hover { background: rgba(226,75,74,0.1); color: var(--danger); }
-    @media (prefers-color-scheme: dark) {
-      .btn-icon:hover { background: rgba(255,255,255,0.08); }
-      .btn-icon.danger:hover { background: rgba(226,75,74,0.15); }
-    }
+    .btn-icon:hover { background: var(--btn-icon-hover-bg); color: var(--text); }
+    .btn-icon.danger:hover { background: var(--btn-icon-danger-hover-bg); color: var(--danger); }
 
     .item-footer {
       padding: 7px 12px; border-top: 0.5px solid var(--border);
@@ -229,10 +234,7 @@
     .pic-chip {
       display: inline-flex; align-items: center; gap: 3px;
       font-size: 11px; color: var(--text-sub);
-      background: rgba(0,0,0,0.05); border-radius: 10px; padding: 1px 7px;
-    }
-    @media (prefers-color-scheme: dark) {
-      .pic-chip { background: rgba(255,255,255,0.07); }
+      background: var(--pic-chip-bg); border-radius: 10px; padding: 1px 7px;
     }
     .pic-chip button {
       background: none; border: none; cursor: pointer;
@@ -347,24 +349,6 @@
     }
 
     [x-cloak] { display: none !important; }
-
-    /* ---- Non-owner view ---- */
-    .name-setup {
-      background: var(--surface); border: 0.5px solid var(--border-med);
-      border-radius: var(--radius-lg); padding: 10px 14px; margin-bottom: 14px;
-      display: flex; gap: 10px; align-items: center;
-    }
-    .name-setup label { font-size: 13px; color: var(--text-sub); white-space: nowrap; }
-    .name-setup input {
-      flex: 1; font-size: 13px; padding: 6px 10px;
-      border: 0.5px solid var(--border-med); border-radius: 6px;
-      background: var(--bg); color: var(--text); outline: none;
-    }
-    .name-setup input:focus { border-color: var(--border-strong); background: var(--surface); }
-    .footer-name { font-size: 11px; font-weight: 500; color: var(--text); }
-    .footer-name.empty { color: var(--text-muted); font-weight: 400; font-style: italic; }
-    .item-main-clickable { cursor: pointer; user-select: none; }
-    .item-main-clickable:hover { background: var(--bg); }
   </style>
 </head>
 <body x-data="app" x-init="init()" x-cloak>
@@ -400,8 +384,11 @@
 
     <!-- Sidebar -->
     <aside class="sidebar">
-      <div class="sidebar-header">
+      <div class="sidebar-header" style="display:flex;align-items:center;justify-content:space-between;padding-right:10px;">
         <div class="sidebar-brand">Group Checklist</div>
+        <button class="btn-link" @click="toggleTheme()" :title="isDark ? 'Switch to light' : 'Switch to dark'" style="font-size:15px;line-height:1;padding:3px;">
+          <span x-text="isDark ? '☀' : '🌙'"></span>
+        </button>
       </div>
 
       <div style="padding: 8px 6px 4px;">
@@ -491,120 +478,72 @@
           <div class="main-content">
             <div class="items-wrap">
 
-              <!-- OWNER VIEW: drag, edit, delete, add item -->
-              <template x-if="activeProject.is_owner">
-                <div>
-                  <template x-for="(item, index) in items" :key="item.id">
+              <template x-for="(item, index) in items" :key="item.id">
+                <div
+                  class="item"
+                  :class="{ done: !!item.completion, dragging: activeProject.is_owner && draggingIndex === index, 'drag-over': activeProject.is_owner && dragOverIndex === index && draggingIndex !== index }"
+                  :draggable="activeProject.is_owner"
+                  @dragstart="activeProject.is_owner && dragStart($event, index)"
+                  @dragover.prevent="activeProject.is_owner && dragOver($event, index)"
+                  @drop.prevent="activeProject.is_owner && drop($event, index)"
+                  @dragend="dragEnd()"
+                >
+                  <div class="item-main">
+                    <span class="drag-handle" x-show="activeProject.is_owner" title="Drag to reorder">⣿</span>
+
                     <div
-                      class="item"
-                      :class="{ done: !!item.completion, dragging: draggingIndex === index, 'drag-over': dragOverIndex === index && draggingIndex !== index }"
-                      draggable="true"
-                      @dragstart="dragStart($event, index)"
-                      @dragover.prevent="dragOver($event, index)"
-                      @drop.prevent="drop($event, index)"
-                      @dragend="dragEnd()"
+                      class="checkbox"
+                      @click="item.completion ? uncompleteItem(item) : (activeProject.is_owner ? openCompleteModal(item) : openNonOwnerComplete(item))"
+                      :title="item.completion ? 'Undo completion' : 'Mark as complete'"
                     >
-                      <div class="item-main">
-                        <span class="drag-handle" title="Drag to reorder">⣿</span>
-
-                        <div
-                          class="checkbox"
-                          @click="item.completion ? uncompleteItem(item) : openCompleteModal(item)"
-                          :title="item.completion ? 'Undo completion' : 'Mark as complete'"
-                        >
-                          <span class="checkmark" x-show="item.completion">✓</span>
-                        </div>
-
-                        <div class="item-body">
-                          <div class="item-text" x-text="item.title"></div>
-                          <div class="item-desc" x-show="item.description" x-text="item.description"></div>
-                        </div>
-
-                        <div class="item-actions">
-                          <button class="btn-icon" @click.stop="openEditItemModal(item)" title="Edit">✏</button>
-                          <button class="btn-icon danger" @click.stop="deleteItem(item)" title="Delete">✕</button>
-                        </div>
-                      </div>
-
-                      <div class="item-footer">
-                        <div class="footer-field">
-                          <span class="footer-label">PIC:</span>
-                          <template x-for="pic in item.pics" :key="pic.id">
-                            <span class="pic-chip">
-                              <span x-text="pic.name"></span>
-                              <button @click.stop="removePic(item, pic)" title="Remove">×</button>
-                            </span>
-                          </template>
-                          <button class="assign-btn" @click.stop="openAddPicModal(item)">+ add</button>
-                        </div>
-                        <div class="footer-field">
-                          <span class="footer-label">Done by:</span>
-                          <template x-if="item.completion">
-                            <span class="done-name" x-text="item.completion.done_by_name"></span>
-                          </template>
-                          <template x-if="item.completion">
-                            <span class="done-time" x-text="new Date(item.completion.completed_at).toLocaleDateString('en-GB', {day:'numeric',month:'short'})"></span>
-                          </template>
-                          <template x-if="!item.completion">
-                            <span class="done-empty">-</span>
-                          </template>
-                        </div>
-                      </div>
+                      <span class="checkmark" x-show="item.completion">✓</span>
                     </div>
-                  </template>
 
-                  <button class="btn-add-item" @click="openModal('addItem')">+ Add checklist item</button>
+                    <div class="item-body">
+                      <div class="item-text" x-text="item.title"></div>
+                      <div class="item-desc" x-show="item.description" x-text="item.description"></div>
+                    </div>
+
+                    <div class="item-actions" x-show="activeProject.is_owner">
+                      <button class="btn-icon" @click.stop="openEditItemModal(item)" title="Edit">✏</button>
+                      <button class="btn-icon danger" @click.stop="deleteItem(item)" title="Delete">✕</button>
+                    </div>
+                  </div>
+
+                  <div class="item-footer">
+                    <div class="footer-field">
+                      <span class="footer-label">PIC:</span>
+                      <template x-for="pic in item.pics" :key="pic.id">
+                        <span class="pic-chip">
+                          <span x-text="pic.name"></span>
+                          <button x-show="activeProject.is_owner" @click.stop="removePic(item, pic)" title="Remove">×</button>
+                        </span>
+                      </template>
+                      <button class="assign-btn" @click.stop="activeProject.is_owner ? openAddPicModal(item) : openNonOwnerPic(item)">
+                        <span x-text="activeProject.is_owner ? '+ add' : 'assign'"></span>
+                      </button>
+                    </div>
+                    <div class="footer-field">
+                      <span class="footer-label">Done by:</span>
+                      <template x-if="item.completion">
+                        <span class="done-name" x-text="item.completion.done_by_name"></span>
+                      </template>
+                      <template x-if="item.completion">
+                        <span class="done-time" x-text="new Date(item.completion.completed_at).toLocaleDateString('en-GB', {day:'numeric',month:'short'})"></span>
+                      </template>
+                      <template x-if="!item.completion">
+                        <span class="done-empty">-</span>
+                      </template>
+                      <template x-if="item.completion && !activeProject.is_owner">
+                        <button class="assign-btn" @click.stop="openNonOwnerComplete(item)">edit</button>
+                      </template>
+                    </div>
+                  </div>
                 </div>
               </template>
 
-              <!-- NON-OWNER VIEW: assign PIC + complete only, matches reference design -->
-              <template x-if="!activeProject.is_owner">
-                <div>
-                  <!-- Global name setup for guests -->
-                  <template x-if="!user">
-                    <div class="name-setup">
-                      <label for="nonowner-name">Nama kamu:</label>
-                      <input id="nonowner-name" type="text" x-model="guestName" @input="localStorage.setItem('guestName', $event.target.value)" placeholder="Masukkan namamu dulu..." />
-                    </div>
-                  </template>
-
-                  <template x-for="(item, index) in items" :key="item.id">
-                    <div class="item" :class="{ done: !!item.completion }">
-                      <div class="item-main item-main-clickable" @click="item.completion ? uncompleteItem(item) : openNonOwnerComplete(item)">
-                        <div class="checkbox">
-                          <span class="checkmark" x-show="item.completion">✓</span>
-                        </div>
-                        <div class="item-body">
-                          <div class="item-text" x-text="item.title"></div>
-                          <div class="item-desc" x-show="item.description" x-text="item.description"></div>
-                        </div>
-                      </div>
-
-                      <div class="item-footer">
-                        <div class="footer-field">
-                          <span class="footer-label">Penanggung jawab:</span>
-                          <span :class="item.pics.length > 0 ? 'footer-name' : 'footer-name empty'" x-text="item.pics.length > 0 ? item.pics.map(p => p.name).join(', ') : 'Belum ditentukan'"></span>
-                          <button class="assign-btn" @click.stop="openNonOwnerPic(item)">atur</button>
-                        </div>
-                        <div class="footer-field">
-                          <span class="footer-label">Dikerjakan oleh:</span>
-                          <template x-if="item.completion">
-                            <span class="done-name" x-text="item.completion.done_by_name"></span>
-                          </template>
-                          <template x-if="item.completion">
-                            <span class="done-time" x-text="new Date(item.completion.completed_at).toLocaleDateString('id-ID',{day:'numeric',month:'short'}) + ', ' + new Date(item.completion.completed_at).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})"></span>
-                          </template>
-                          <template x-if="!item.completion">
-                            <span class="done-empty">-</span>
-                          </template>
-                          <template x-if="item.completion">
-                            <button class="assign-btn" @click.stop="openNonOwnerComplete(item)">edit</button>
-                          </template>
-                        </div>
-                      </div>
-                    </div>
-                  </template>
-                </div>
+              <template x-if="activeProject.is_owner">
+                <button class="btn-add-item" @click="openModal('addItem')">+ Add checklist item</button>
               </template>
 
             </div>

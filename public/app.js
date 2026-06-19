@@ -52,6 +52,13 @@ document.addEventListener('alpine:init', () => {
     nonOwnerAssignInput: '',
     nonOwnerAssignError: '',
 
+    theme: localStorage.getItem('theme') || 'system',
+    get isDark() {
+      if (this.theme === 'dark') return true;
+      if (this.theme === 'light') return false;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    },
+
     ws: null,
     wsSlug: null,
 
@@ -60,6 +67,7 @@ document.addEventListener('alpine:init', () => {
     // ---- Init ----
     async init() {
       this.guestName = localStorage.getItem('guestName') || '';
+      this.applyTheme();
 
       try {
         this.user = await api('GET', '/api/auth/me');
@@ -360,6 +368,19 @@ document.addEventListener('alpine:init', () => {
       } catch (e) {
         this.showToast(e.message, 'error');
       }
+    },
+
+    // ---- Theme ----
+    applyTheme() {
+      const html = document.documentElement;
+      if (this.theme === 'dark') html.setAttribute('data-theme', 'dark');
+      else if (this.theme === 'light') html.setAttribute('data-theme', 'light');
+      else html.removeAttribute('data-theme');
+    },
+    toggleTheme() {
+      this.theme = this.isDark ? 'light' : 'dark';
+      localStorage.setItem('theme', this.theme);
+      this.applyTheme();
     },
 
     // ---- Non-owner assign (PIC / complete) ----
