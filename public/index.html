@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Group Checklist</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --sidebar-w: 260px;
+      --sidebar-bg: #202123;
+      --main-bg: #343541;
+      --card-bg: #3e3f4b;
+      --input-bg: #40414f;
+      --text: #ececf1;
+      --text-muted: #8e8ea0;
+      --accent: #10a37f;
+      --accent-hover: #0d8f6e;
+      --border: #4d4d4f;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --radius: 8px;
+    }
+
+    html, body { height: 100%; font-family: system-ui, -apple-system, sans-serif; background: var(--main-bg); color: var(--text); font-size: 14px; }
+
+    /* ---- Scrollbar ---- */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ---- Layout ---- */
+    .layout { display: flex; height: 100vh; overflow: hidden; }
+
+    /* ---- Sidebar ---- */
+    .sidebar {
+      width: var(--sidebar-w);
+      min-width: var(--sidebar-w);
+      background: var(--sidebar-bg);
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .sidebar-header {
+      padding: 16px 12px 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-title { font-size: 15px; font-weight: 600; color: var(--text); }
+    .sidebar-projects { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .sidebar-footer { padding: 12px; border-top: 1px solid var(--border); }
+
+    .btn-new-project {
+      width: 100%;
+      padding: 9px 12px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .btn-new-project:hover { background: var(--accent-hover); }
+
+    .project-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      cursor: pointer;
+      border-radius: 6px;
+      margin: 1px 6px;
+      color: var(--text);
+      transition: background 0.15s;
+      text-decoration: none;
+    }
+    .project-item:hover { background: rgba(255,255,255,0.07); }
+    .project-item.active { background: rgba(255,255,255,0.12); }
+    .project-item-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+    .badge-vis {
+      font-size: 10px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-weight: 500;
+      flex-shrink: 0;
+    }
+    .badge-public { background: rgba(16,163,127,0.2); color: var(--accent); }
+    .badge-private { background: rgba(255,255,255,0.08); color: var(--text-muted); }
+
+    .user-info { display: flex; align-items: center; gap: 10px; }
+    .user-avatar {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; flex-shrink: 0;
+    }
+    .user-name { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .btn-link { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; padding: 4px; }
+    .btn-link:hover { color: var(--text); }
+
+    /* ---- Main ---- */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    .main-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .main-header h1 { font-size: 16px; font-weight: 600; flex: 1; }
+    .header-actions { display: flex; gap: 8px; align-items: center; }
+
+    .main-content { flex: 1; overflow-y: auto; padding: 20px; }
+
+    /* ---- Empty state ---- */
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100%; color: var(--text-muted); gap: 12px; text-align: center;
+    }
+    .empty-state svg { opacity: 0.3; }
+    .empty-state p { font-size: 15px; }
+
+    /* ---- Items ---- */
+    .items-list { display: flex; flex-direction: column; gap: 8px; max-width: 760px; }
+
+    .item-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      transition: border-color 0.15s, opacity 0.15s;
+      cursor: default;
+    }
+    .item-card.dragging { opacity: 0.4; }
+    .item-card.drag-over { border-color: var(--accent); }
+
+    .drag-handle {
+      color: var(--text-muted);
+      cursor: grab;
+      padding: 2px 0;
+      flex-shrink: 0;
+      user-select: none;
+    }
+    .drag-handle:active { cursor: grabbing; }
+
+    .item-checkbox {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 2px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .item-checkbox.completed {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .item-checkbox.completed::after {
+      content: '';
+      width: 6px; height: 10px;
+      border: 2px solid #fff;
+      border-top: none; border-left: none;
+      transform: rotate(45deg) translateY(-1px);
+    }
+
+    .item-body { flex: 1; min-width: 0; }
+    .item-title {
+      font-size: 14px;
+      font-weight: 500;
+      word-break: break-word;
+    }
+    .item-title.done { text-decoration: line-through; color: var(--text-muted); }
+    .item-desc { font-size: 12px; color: var(--text-muted); margin-top: 4px; word-break: break-word; }
+
+    .item-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+
+    .pic-chip {
+      background: rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 2px 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex; align-items: center; gap: 4px;
+    }
+    .pic-chip button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; line-height: 1; padding: 0; }
+    .pic-chip button:hover { color: var(--danger); }
+
+    .completion-badge {
+      font-size: 11px;
+      color: var(--accent);
+      background: rgba(16,163,127,0.1);
+      border-radius: 12px;
+      padding: 2px 8px;
+    }
+
+    .item-actions { display: flex; gap: 4px; flex-shrink: 0; margin-top: 1px; }
+    .btn-icon {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 5px;
+      font-size: 13px;
+      line-height: 1;
+      transition: all 0.1s;
+    }
+    .btn-icon:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+    .btn-icon.danger:hover { background: rgba(239,68,68,0.12); color: var(--danger); }
+
+    /* ---- Add item bar ---- */
+    .add-item-bar {
+      max-width: 760px;
+      margin-top: 12px;
+    }
+    .btn-add-item {
+      width: 100%;
+      padding: 10px 16px;
+      background: transparent;
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 13px;
+      text-align: left;
+      transition: all 0.15s;
+    }
+    .btn-add-item:hover { border-color: var(--accent); color: var(--accent); background: rgba(16,163,127,0.05); }
+
+    /* ---- Auth page ---- */
+    .auth-page {
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--main-bg);
+    }
+    .auth-card {
+      width: 360px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+    }
+    .auth-card h2 { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+    .auth-card p { color: var(--text-muted); font-size: 13px; margin-bottom: 24px; }
+
+    /* ---- Forms ---- */
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 5px; font-weight: 500; }
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 9px 12px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+      resize: vertical;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus { border-color: var(--accent); }
+    .form-group select option { background: var(--input-bg); }
+
+    .error-msg { color: var(--danger); font-size: 12px; margin-top: 10px; text-align: center; }
+
+    .btn { padding: 9px 16px; border-radius: 6px; border: none; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-secondary { background: rgba(255,255,255,0.08); color: var(--text); }
+    .btn-secondary:hover { background: rgba(255,255,255,0.12); }
+    .btn-danger { background: rgba(239,68,68,0.15); color: var(--danger); }
+    .btn-danger:hover { background: rgba(239,68,68,0.25); }
+
+    .btn-block { width: 100%; }
+    .auth-switch { text-align: center; margin-top: 16px; font-size: 12px; color: var(--text-muted); }
+    .auth-switch a { color: var(--accent); cursor: pointer; text-decoration: none; }
+    .auth-switch a:hover { text-decoration: underline; }
+
+    /* ---- Modals ---- */
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+    .modal {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      width: 100%;
+      max-width: 440px;
+    }
+    .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 20px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+
+    /* ---- Visibility toggle in header ---- */
+    .vis-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 10px;
+      color: var(--text-muted);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .vis-toggle:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+
+    .btn-copy-link {
+      display: flex; align-items: center; gap: 5px;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 10px;
+      color: var(--text-muted);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-copy-link:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ---- Completion info ---- */
+    .completion-info { font-size: 11px; color: var(--accent); margin-top: 4px; }
+
+    /* ---- Spinner ---- */
+    .loading-screen {
+      height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted);
+    }
+
+    /* ---- Notification toast ---- */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 13px;
+      z-index: 200;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    .toast.success { border-left: 3px solid var(--accent); }
+    .toast.error { border-left: 3px solid var(--danger); }
+
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+<body x-data="app" x-init="init()" x-cloak>
+
+  <!-- Loading -->
+  <div class="loading-screen" x-show="loading">Loading...</div>
+
+  <!-- Auth page (not logged in, no public project active) -->
+  <div class="auth-page" x-show="!loading && !user && !activeProject">
+    <div class="auth-card">
+      <h2 x-text="authMode === 'login' ? 'Sign in' : 'Create account'"></h2>
+      <p>Group Checklist</p>
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" x-model="authForm.username" @keyup.enter="submitAuth()" placeholder="your_username" autocomplete="username" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" x-model="authForm.password" @keyup.enter="submitAuth()" placeholder="••••••••" autocomplete="current-password" />
+      </div>
+      <p class="error-msg" x-show="authError" x-text="authError"></p>
+      <button class="btn btn-primary btn-block" style="margin-top:4px" @click="submitAuth()" :disabled="authLoading">
+        <span x-text="authLoading ? 'Please wait...' : (authMode === 'login' ? 'Sign in' : 'Create account')"></span>
+      </button>
+      <p class="auth-switch">
+        <span x-show="authMode === 'login'">No account? <a @click="authMode='register'; authError=''">Register</a></span>
+        <span x-show="authMode === 'register'">Already have one? <a @click="authMode='login'; authError=''">Sign in</a></span>
+      </p>
+    </div>
+  </div>
+
+  <!-- Main app layout -->
+  <div class="layout" x-show="!loading && (user || activeProject)">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title">Group Checklist</div>
+      </div>
+
+      <div style="padding: 10px 6px 4px;">
+        <button class="btn-new-project" @click="user ? openModal('createProject') : null" x-show="user">
+          <span style="font-size:16px">+</span> New project
+        </button>
+      </div>
+
+      <div class="sidebar-projects">
+        <template x-if="user">
+          <div>
+            <template x-for="p in projects" :key="p.id">
+              <div class="project-item" :class="{active: activeProject?.slug === p.slug}" @click="selectProject(p.slug)">
+                <span class="project-item-name" x-text="p.name"></span>
+                <span class="badge-vis" :class="p.visibility === 'public' ? 'badge-public' : 'badge-private'" x-text="p.visibility === 'public' ? 'pub' : 'priv'"></span>
+              </div>
+            </template>
+            <div style="padding: 16px 12px; color: var(--text-muted); font-size: 12px;" x-show="projects.length === 0">No projects yet.</div>
+          </div>
+        </template>
+        <template x-if="!user && activeProject">
+          <div style="padding: 12px; color: var(--text-muted); font-size: 12px;">
+            Viewing shared project. <a href="#" style="color: var(--accent);" @click.prevent="authMode='login'">Sign in</a> to manage your own.
+          </div>
+        </template>
+      </div>
+
+      <div class="sidebar-footer">
+        <template x-if="user">
+          <div class="user-info">
+            <div class="user-avatar" x-text="user.username[0].toUpperCase()"></div>
+            <span class="user-name" x-text="user.username"></span>
+            <button class="btn-link" title="Sign out" @click="logout()">↪</button>
+          </div>
+        </template>
+        <template x-if="!user">
+          <div style="font-size:12px; color: var(--text-muted);">
+            Guest: <span x-text="guestName || 'not set'"></span>
+            <button class="btn-link" style="margin-left:6px;" @click="openModal('guestName')">change</button>
+          </div>
+        </template>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <div class="main">
+
+      <!-- No project selected -->
+      <div class="empty-state" x-show="!activeProject">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
+        <p x-show="user">Select a project or create a new one.</p>
+        <p x-show="!user">Open a shared project link to get started.</p>
+      </div>
+
+      <!-- Project view -->
+      <template x-if="activeProject">
+        <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+
+          <!-- Header -->
+          <div class="main-header">
+            <h1 x-text="activeProject.name"></h1>
+            <div class="header-actions">
+              <!-- Visibility badge / toggle (owner only) -->
+              <template x-if="activeProject.is_owner">
+                <button class="vis-toggle" @click="toggleVisibility()" :title="activeProject.visibility === 'public' ? 'Click to make private' : 'Click to make public'">
+                  <span x-text="activeProject.visibility === 'public' ? '🌐 Public' : '🔒 Private'"></span>
+                </button>
+              </template>
+              <template x-if="!activeProject.is_owner">
+                <span class="badge-vis" :class="activeProject.visibility === 'public' ? 'badge-public' : 'badge-private'" style="padding:5px 10px;" x-text="activeProject.visibility === 'public' ? '🌐 Public' : '🔒 Private'"></span>
+              </template>
+
+              <!-- Copy link -->
+              <button class="btn-copy-link" @click="copyLink()" title="Copy project link">
+                🔗 Copy link
+              </button>
+
+              <!-- Delete project (owner only) -->
+              <template x-if="activeProject.is_owner">
+                <button class="btn-icon danger" title="Delete project" @click="deleteProject()">🗑</button>
+              </template>
+            </div>
+          </div>
+
+          <!-- Items list -->
+          <div class="main-content">
+            <div class="items-list">
+              <template x-for="(item, index) in items" :key="item.id">
+                <div
+                  class="item-card"
+                  :class="{ dragging: draggingIndex === index, 'drag-over': dragOverIndex === index && draggingIndex !== index }"
+                  draggable="true"
+                  @dragstart="dragStart($event, index)"
+                  @dragover.prevent="dragOver($event, index)"
+                  @drop.prevent="drop($event, index)"
+                  @dragend="dragEnd()"
+                >
+                  <!-- Drag handle -->
+                  <span class="drag-handle" title="Drag to reorder">⣿</span>
+
+                  <!-- Checkbox -->
+                  <div
+                    class="item-checkbox"
+                    :class="{ completed: !!item.completion }"
+                    @click="item.completion ? uncompleteItem(item) : openCompleteModal(item)"
+                    :title="item.completion ? 'Click to undo completion' : 'Click to complete'"
+                  ></div>
+
+                  <!-- Body -->
+                  <div class="item-body">
+                    <div class="item-title" :class="{ done: !!item.completion }" x-text="item.title"></div>
+                    <div class="item-desc" x-show="item.description" x-text="item.description"></div>
+
+                    <div class="item-meta">
+                      <!-- PICs -->
+                      <template x-for="pic in item.pics" :key="pic.id">
+                        <span class="pic-chip">
+                          👤 <span x-text="pic.name"></span>
+                          <button @click="removePic(item, pic)" title="Remove PIC">×</button>
+                        </span>
+                      </template>
+                      <!-- Add PIC -->
+                      <button class="btn-icon" style="font-size:11px; padding:2px 7px;" @click="openAddPicModal(item)" title="Add PIC">+ PIC</button>
+
+                      <!-- Completion info -->
+                      <template x-if="item.completion">
+                        <span class="completion-badge" :title="`Completed at ${new Date(item.completion.completed_at).toLocaleString()}`">
+                          ✓ <span x-text="item.completion.done_by_name"></span>
+                          <template x-if="item.completion.notes">
+                            <span x-text="' — ' + item.completion.notes"></span>
+                          </template>
+                        </span>
+                      </template>
+                    </div>
+                  </div>
+
+                  <!-- Actions -->
+                  <div class="item-actions">
+                    <button class="btn-icon" title="Edit" @click="openEditItemModal(item)">✏️</button>
+                    <button class="btn-icon danger" title="Delete" @click="deleteItem(item)">🗑</button>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <!-- Add item -->
+            <div class="add-item-bar">
+              <button class="btn-add-item" @click="openModal('addItem')">+ Add checklist item</button>
+            </div>
+          </div>
+
+        </div>
+      </template>
+
+    </div>
+  </div>
+
+  <!-- ===================== MODALS ===================== -->
+
+  <!-- Guest name prompt -->
+  <div class="modal-backdrop" x-show="modal === 'guestName'" @click.self="closeModal()">
+    <div class="modal">
+      <h3>Your display name</h3>
+      <div class="form-group">
+        <label>Name (used for all actions)</label>
+        <input type="text" x-model="guestNameInput" @keyup.enter="saveGuestName()" placeholder="e.g. John" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" @click="closeModal()">Cancel</button>
+        <button class="btn btn-primary" @click="saveGuestName()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create project -->
+  <div class="modal-backdrop" x-show="modal === 'createProject'" @click.self="closeModal()">
+    <div class="modal">
+      <h3>New project</h3>
+      <div class="form-group">
+        <label>Project name</label>
+        <input type="text" x-model="createProjectForm.name" @keyup.enter="createProject()" placeholder="e.g. Sprint Checklist" />
+      </div>
+      <div class="form-group">
+        <label>Visibility</label>
+        <select x-model="createProjectForm.visibility">
+          <option value="private">Private (owner only)</option>
+          <option value="public">Public (anyone with link)</option>
+        </select>
+      </div>
+      <p class="error-msg" x-show="modalError" x-text="modalError"></p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" @click="closeModal()">Cancel</button>
+        <button class="btn btn-primary" @click="createProject()">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add item -->
+  <div class="modal-backdrop" x-show="modal === 'addItem'" @click.self="closeModal()">
+    <div class="modal">
+      <h3>Add item</h3>
+      <div class="form-group">
+        <label>Title</label>
+        <input type="text" x-model="itemForm.title" @keyup.enter="submitItem()" placeholder="What needs to be done?" />
+      </div>
+      <div class="form-group">
+        <label>Description (optional)</label>
+        <textarea x-model="itemForm.description" rows="3" placeholder="Details..."></textarea>
+      </div>
+      <template x-if="!user">
+        <div class="form-group">
+          <label>Your name</label>
+          <input type="text" x-model="itemForm.actor_name" placeholder="Your name" />
+        </div>
+      </template>
+      <p class="error-msg" x-show="modalError" x-text="modalError"></p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" @click="closeModal()">Cancel</button>
+        <button class="btn btn-primary" @click="submitItem()">Add item</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit item -->
+  <div class="modal-backdrop" x-show="modal === 'editItem'" @click.self="closeModal()">
+    <div class="modal">
+      <h3>Edit item</h3>
+      <div class="form-group">
+        <label>Title</label>
+        <input type="text" x-model="itemForm.title" @keyup.enter="submitItem()" />
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea x-model="itemForm.description" rows="3"></textarea>
+      </div>
+      <template x-if="!user">
+        <div class="form-group">
+          <label>Your name</label>
+          <input type="text" x-model="itemForm.actor_name" placeholder="Your name" />
+        </div>
+      </template>
+      <p class="error-msg" x-show="modalError" x-text="modalError"></p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" @click="closeModal()">Cancel</button>
+        <button class="btn btn-primary" @click="submitItem()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Complete item -->
+  <div class="modal-backdrop" x-show="modal === 'complete'" @click.self="closeModal()">
+    <div class="modal">
+      <h3>Mark as complete</h3>
+      <p style="color:var(--text-muted);font-size:12px;margin-bottom:16px;" x-text="completingItem?.title"></p>
+      <div class="form-group">
+        <label>Completed by</label>
+        <input type="text" x-model="completeForm.done_by_name" @keyup.enter="submitComplete()" placeholder="Your name" />
+      </div>
+      <div class="form-group">
+        <label>Notes (optional)</label>
+        <textarea x-model="completeForm.notes" rows="3" placeholder="Any notes..."></textarea>
+      </div>
+      <p class="error-msg" x-show="modalError" x-text="modalError"></p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" @click="closeModal()">Cancel</button>
+        <button class="btn btn-primary" @click="submitComplete()">Complete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add PIC -->
+  <div class="modal-backdrop" x-show="modal === 'addPic'" @click.self="closeModal()">
+    <div class="modal">
+      <h3>Add PIC</h3>
+      <p style="color:var(--text-muted);font-size:12px;margin-bottom:16px;" x-text="picTargetItem?.title"></p>
+      <div class="form-group">
+        <label>PIC name</label>
+        <input type="text" x-model="picForm.name" @keyup.enter="submitPic()" placeholder="Person in charge" />
+      </div>
+      <template x-if="!user">
+        <div class="form-group">
+          <label>Assigned by</label>
+          <input type="text" x-model="picForm.actor_name" placeholder="Your name" />
+        </div>
+      </template>
+      <p class="error-msg" x-show="modalError" x-text="modalError"></p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" @click="closeModal()">Cancel</button>
+        <button class="btn btn-primary" @click="submitPic()">Add PIC</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast notification -->
+  <div class="toast" :class="toast.type" x-show="toast.visible" x-text="toast.msg"></div>
+
+  <script src="/app.js"></script>
+  <script defer src="https://unpkg.com/alpinejs@3/dist/cdn.min.js"></script>
+</body>
+</html>
