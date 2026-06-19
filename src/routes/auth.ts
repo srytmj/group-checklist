@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { sign, verify } from "hono/jwt";
 import bcrypt from "bcryptjs";
 import sql from "../db";
 import type { AppEnv, User } from "../types";
@@ -9,22 +8,76 @@ const auth = new Hono<AppEnv>();
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "dev_secret_change_me";
 const COOKIE_NAME = "token";
-const COOKIE_TTL = 60 * 60 * 24 * 30;
+const COOKIE_TTL = 60 * 60 * 24 * 30; // 30 days
 
-function tokenPayload(user: { id: string; username: string }) {
-  return {
-    sub: user.id,
-    username: user.username,
-    exp: Math.floor(Date.now() / 1000) + COOKIE_TTL,
-  };
+// ---- JWT (HS256, Web Crypto — no external dep) ----
+
+function b64urlEncode(buf: ArrayBuffer): string {
+  let str = "";
+  for (const b of new Uint8Array(buf)) str += String.fromCharCode(b);
+  return btoa(str).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
+
+function b64urlDecode(s: string): Uint8Array {
+  const pad = s.replace(/-/g, "+").replace(/_/g, "/");
+  return Uint8Array.from(atob(pad), (c) => c.charCodeAt(0));
+}
+
+async function hmacKey(secret: string, usage: "sign" | "verify") {
+  return crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    [usage]
+  );
+}
+
+async function jwtSign(payload: object): Promise<string> {
+  const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }))
+    .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const body = btoa(JSON.stringify(payload))
+    .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const data = `${header}.${body}`;
+  const key = await hmacKey(JWT_SECRET, "sign");
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(data));
+  return `${data}.${b64urlEncode(sig)}`;
+}
+
+async function jwtVerify(token: string): Promise<{ sub: string; username: string }> {
+  const parts = token.split(".");
+  if (parts.length !== 3) throw new Error("malformed token");
+
+  const [header, body, sig] = parts;
+  const key = await hmacKey(JWT_SECRET, "verify");
+  const valid = await crypto.subtle.verify(
+    "HMAC",
+    key,
+    b64urlDecode(sig),
+    new TextEncoder().encode(`${header}.${body}`)
+  );
+  if (!valid) throw new Error("invalid signature");
+
+  const payload = JSON.parse(atob(body.replace(/-/g, "+").replace(/_/g, "/")));
+  if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+    throw new Error("token expired");
+  }
+  return payload;
+}
+
+// ---- Cookie helpers ----
 
 function cookieString(token: string) {
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
   return `${COOKIE_NAME}=${token}; HttpOnly; SameSite=Lax; Max-Age=${COOKIE_TTL}; Path=/${secure}`;
 }
 
-// Return raw Response so Set-Cookie is guaranteed in response headers
+function parseCookieHeader(header: string | undefined, name: string): string | null {
+  if (!header) return null;
+  const match = header.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 function jsonWithCookie(data: object, token: string, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
@@ -35,31 +88,25 @@ function jsonWithCookie(data: object, token: string, status = 200): Response {
   });
 }
 
-// Parse cookie header manually — no hono/cookie dependency
-function parseCookie(cookieHeader: string | null, name: string): string | null {
-  if (!cookieHeader) return null;
-  const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : null;
-}
+// ---- Auth middleware ----
 
 export async function authMiddleware(c: Context<AppEnv>, next: Next) {
-  const token = parseCookie(c.req.header("cookie") ?? null, COOKIE_NAME);
+  const token = parseCookieHeader(c.req.header("cookie"), COOKIE_NAME);
   c.set("user", null);
 
   if (token) {
     try {
-      const payload = (await verify(token, JWT_SECRET)) as {
-        sub: string;
-        username: string;
-      };
+      const payload = await jwtVerify(token);
       c.set("user", { id: payload.sub, username: payload.username } as User);
     } catch (err) {
-      console.warn("[auth] token invalid:", (err as Error).message);
+      console.warn("[auth] verify failed:", (err as Error).message);
     }
   }
 
   await next();
 }
+
+// ---- Routes ----
 
 // POST /api/auth/register
 auth.post("/register", async (c) => {
@@ -84,7 +131,12 @@ auth.post("/register", async (c) => {
     RETURNING id, username
   `;
 
-  const token = await sign(tokenPayload(user), JWT_SECRET);
+  const token = await jwtSign({
+    sub: user.id,
+    username: user.username,
+    exp: Math.floor(Date.now() / 1000) + COOKIE_TTL,
+  });
+
   return jsonWithCookie({ id: user.id, username: user.username }, token, 201);
 });
 
@@ -104,7 +156,12 @@ auth.post("/login", async (c) => {
   const valid = await bcrypt.compare(password, user.password_hash);
   if (!valid) return c.json({ error: "invalid credentials" }, 401);
 
-  const token = await sign(tokenPayload(user), JWT_SECRET);
+  const token = await jwtSign({
+    sub: user.id,
+    username: user.username,
+    exp: Math.floor(Date.now() / 1000) + COOKIE_TTL,
+  });
+
   return jsonWithCookie({ id: user.id, username: user.username }, token);
 });
 
