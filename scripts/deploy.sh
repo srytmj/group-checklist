@@ -6,6 +6,10 @@ set -euo pipefail
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DOMAIN="${DEPLOY_DOMAIN:-YOUR_DOMAIN}"
 
+# Bun is not on PATH when the script is run directly — resolve it explicitly
+export PATH="$HOME/.bun/bin:$PATH"
+BUN="${BUN:-$HOME/.bun/bin/bun}"
+
 install_nginx() {
   echo "--- Configuring Nginx ---"
   NGINX_CONF="/etc/nginx/sites-available/group-checklist"
@@ -33,7 +37,7 @@ echo "--- Pulling latest changes ---"
 git pull origin main
 
 echo "--- Installing dependencies ---"
-bun install --frozen-lockfile
+"$BUN" install --frozen-lockfile
 
 # Handle flags
 for arg in "$@"; do
