@@ -792,7 +792,7 @@
               <template x-if="activeProject.is_owner">
                 <div class="items-toolbar">
                   <button class="btn-add-item" @click="openModal('addItem')">+ Add task or section</button>
-                  <button class="btn-import" @click="openModal('import')" title="Bulk import from CSV">⬆ Import CSV</button>
+                  <button class="btn-import" @click="openModal('import')" title="Bulk import from CSV">⬆ Import Checklist</button>
                 </div>
               </template>
 
@@ -1045,7 +1045,7 @@
     </div>
   </div>
 
-  <!-- Import CSV / Markdown -->
+  <!-- Import / Markdown -->
   <div class="modal-backdrop" x-show="modal === 'import'" @click.self="closeModal()">
     <div class="modal" style="max-width:460px;">
       <h3>Import checklist</h3>

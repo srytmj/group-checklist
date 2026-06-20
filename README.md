@@ -2,7 +2,7 @@
 
 Realtime multi-user checklist app. Built with Bun, Hono, PostgreSQL, and Alpine.js.
 
-**Live:** https://cheky.suryatmaja.dev
+**Live:** https://checky.suryatmaja.dev
 
 ## Stack
 

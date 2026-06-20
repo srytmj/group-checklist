@@ -14,7 +14,7 @@ prompt(){ echo -e "  ${CYAN}?${NC}  $1"; }
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_NAME="group-checklist"
-DOMAIN="cheky.suryatmaja.dev"
+DOMAIN="checky.suryatmaja.dev"
 
 clear
 echo -e "${GREEN}${BOLD}"

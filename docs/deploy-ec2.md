@@ -2,7 +2,7 @@
 
 Runs the app on an EC2 instance with **Neon** as the default database. Swap to **AWS RDS** at any point by changing two env vars.
 
-Live at: **https://cheky.suryatmaja.dev**
+Live at: **https://checky.suryatmaja.dev**
 
 ## Prerequisites
 
@@ -84,7 +84,7 @@ bash init.sh
 3. Create `.env` from the template and open it for editing (fill in `DATABASE_URL` and `JWT_SECRET`)
 4. Run database migrations
 5. Pause and prompt you to install the Cloudflare Origin Certificate
-6. Configure Nginx for `cheky.suryatmaja.dev`
+6. Configure Nginx for `checky.suryatmaja.dev`
 7. Install and start the systemd service
 8. Print the live URL when done
 
