@@ -87,6 +87,11 @@ const _projectMethods = {
     }
   },
 
+  toggleViewMode() {
+    this.viewMode = this.viewMode === 'tree' ? 'flat' : 'tree';
+    localStorage.setItem('viewMode', this.viewMode);
+  },
+
   copyLink() {
     const url = `${location.origin}/#/p/${this.activeProject.slug}`;
     navigator.clipboard.writeText(url).then(() => this.showToast('Link copied!'));

@@ -331,6 +331,40 @@ const _modalHTML = `
     </div>
   </div>
 
+  <!-- Export -->
+  <div class="modal-backdrop" x-show="modal === 'export'" @click.self="closeModal()">
+    <div class="modal" style="max-width:340px;">
+      <h3>Export checklist</h3>
+      <p class="modal-sub" x-text="activeProject?.name"></p>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:10px;">
+        <button class="export-format-btn" @click="exportChecklist('md')">
+          <div class="export-fmt-title">Markdown <span class="import-fmt-badge">Recommended</span></div>
+          <div class="export-fmt-desc">Sections, tasks, completion info</div>
+        </button>
+        <button class="export-format-btn" @click="exportChecklist('csv')">
+          <div class="export-fmt-title">CSV spreadsheet</div>
+          <div class="export-fmt-desc">All fields including PICs and dates</div>
+        </button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" @click="closeModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Batch delete confirmation -->
+  <div class="modal-backdrop" x-show="modal === 'batchDelete'" @click.self="closeModal()">
+    <div class="modal">
+      <h3>Delete selected items?</h3>
+      <p class="modal-sub" x-text="selectedCount() + ' item' + (selectedCount() !== 1 ? 's' : '') + ' will be permanently deleted.'"></p>
+      <p style="font-size:13px;color:var(--text-muted);margin-top:4px;">This cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" @click="closeModal()">Cancel</button>
+        <button class="btn btn-primary" style="background:var(--danger);border-color:var(--danger);" @click="confirmBatchDelete()">Delete</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast -->
   <div class="toast" :class="toast.type" x-show="toast.visible" x-text="toast.msg"></div>
 

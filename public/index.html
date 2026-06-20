@@ -131,7 +131,11 @@
               <button class="mobile-panel-tab" :class="{ active: mobilePanel === 'items' }" @click="mobilePanel = 'items'">Items</button>
               <button class="mobile-panel-tab" :class="{ active: mobilePanel === 'chat' }" @click="mobilePanel = 'chat'">Chat</button>
             </div>
+            <button class="btn-link" @click="openModal('export')" title="Export" style="font-size:16px;padding:2px 4px;">📤</button>
             <button class="btn-link" @click="copyLink()" title="Copy link" style="font-size:16px;padding:2px 4px;">🔗</button>
+            <template x-if="activeProject.is_owner">
+              <button class="btn-link" @click="toggleDeleteMode()" :style="deleteMode ? 'color:var(--danger)' : ''" :title="deleteMode ? 'Cancel delete mode' : 'Select items to delete'" style="font-size:15px;padding:2px 4px;">☑</button>
+            </template>
             <template x-if="activeProject.is_owner">
               <button class="btn-link" @click="openDeleteProjectModal()" title="Delete project" style="font-size:16px;padding:2px 4px;color:var(--danger);">🗑</button>
             </template>
@@ -142,6 +146,15 @@
             <div class="main-header-top">
               <h1 class="main-title" x-text="activeProject.name"></h1>
               <div class="header-actions">
+                <button class="header-btn" @click="toggleViewMode()" :title="viewMode === 'tree' ? 'Switch to flat view' : 'Switch to tree view'">
+                  <span x-text="viewMode === 'tree' ? '≡ Flat' : '🌲 Tree'"></span>
+                </button>
+                <button class="header-btn" @click="openModal('export')">📤 Export</button>
+                <template x-if="activeProject.is_owner">
+                  <button class="header-btn" :class="{ active: deleteMode }" @click="toggleDeleteMode()">
+                    <span x-text="deleteMode ? '✕ Cancel' : '☑ Select'"></span>
+                  </button>
+                </template>
                 <template x-if="activeProject.is_owner">
                   <button class="header-btn" @click="toggleVisibility()">
                     <span x-text="activeProject.visibility === 'public' ? '🌐 Public' : '🔒 Private'"></span>
@@ -169,30 +182,46 @@
           <div class="main-content" style="flex:1;">
             <div class="items-wrap">
 
-              <template x-for="(item, index) in items" :key="item.id">
+              <template x-for="(item, index) in displayItems" :key="item.id">
                 <div
+                  x-show="item.item_type === 'section' || viewMode === 'flat' || !item._sectionId || !collapsedSections[item._sectionId]"
                   :class="{
                     'item': item.item_type !== 'section',
                     'section-item': item.item_type === 'section',
                     'done': item.item_type !== 'section' && !!item.completion,
-                    'dragging': activeProject.is_owner && draggingIndex === index,
-                    'drag-over': activeProject.is_owner && dragOverIndex === index && draggingIndex !== index
+                    'tree-child': viewMode === 'tree' && item.item_type !== 'section' && !!item._sectionId,
+                    'dragging': activeProject.is_owner && !deleteMode && draggingIndex === index,
+                    'drag-over': activeProject.is_owner && !deleteMode && dragOverIndex === index && draggingIndex !== index
                   }"
-                  :draggable="activeProject.is_owner"
-                  @dragstart="activeProject.is_owner && dragStart($event, index)"
-                  @dragover.prevent="activeProject.is_owner && dragOver($event, index)"
-                  @drop.prevent="activeProject.is_owner && drop($event, index)"
+                  :draggable="activeProject.is_owner && !deleteMode"
+                  @dragstart="activeProject.is_owner && !deleteMode && dragStart($event, index)"
+                  @dragover.prevent="activeProject.is_owner && !deleteMode && dragOver($event, index)"
+                  @drop.prevent="activeProject.is_owner && !deleteMode && drop($event, index)"
                   @dragend="dragEnd()"
                 >
-                  <!-- Section header (notebook-style) -->
+                  <!-- Section header -->
                   <template x-if="item.item_type === 'section'">
                     <div class="section-inner">
-                      <span class="drag-handle" x-show="activeProject.is_owner" title="Drag to reorder">⣿</span>
+                      <input x-show="deleteMode" type="checkbox" class="delete-checkbox"
+                             :checked="!!selectedItems[item.id]" @change="toggleSelectItem(item)" @click.stop />
+                      <button x-show="viewMode === 'tree' && !deleteMode" class="section-collapse-btn"
+                              @click.stop="toggleSection(item.id)" :title="collapsedSections[item.id] ? 'Expand section' : 'Collapse section'">
+                        <span x-text="collapsedSections[item.id] ? '▶' : '▼'"></span>
+                      </button>
+                      <span class="drag-handle" x-show="activeProject.is_owner && !deleteMode" title="Drag to reorder">⣿</span>
                       <div class="section-body">
                         <div class="section-title" x-text="item.title"></div>
                         <div class="section-caption" x-show="item.description" x-text="item.description"></div>
+                        <div x-show="viewMode === 'tree'" class="section-progress-line">
+                          <span class="section-progress-text"
+                                x-text="getSectionProgress(item.id).done + '/' + getSectionProgress(item.id).total + ' done'"></span>
+                          <div class="section-progress-bar-wrap">
+                            <div class="section-progress-bar"
+                                 :style="{ width: getSectionProgress(item.id).pct + '%' }"></div>
+                          </div>
+                        </div>
                       </div>
-                      <div class="section-actions" x-show="activeProject.is_owner">
+                      <div class="section-actions" x-show="activeProject.is_owner && !deleteMode">
                         <button class="btn-icon" @click.stop="openEditItemModal(item)" title="Edit">✏</button>
                         <button class="btn-icon danger" @click.stop="openDeleteItemModal(item)" title="Delete">✕</button>
                       </div>
@@ -203,10 +232,13 @@
                   <template x-if="!item.item_type || item.item_type === 'task'">
                     <div>
                       <div class="item-main">
-                        <span class="drag-handle" x-show="activeProject.is_owner" title="Drag to reorder">⣿</span>
+                        <input x-show="deleteMode" type="checkbox" class="delete-checkbox"
+                               :checked="!!selectedItems[item.id]" @change="toggleSelectItem(item)" @click.stop />
+                        <span class="drag-handle" x-show="activeProject.is_owner && !deleteMode" title="Drag to reorder">⣿</span>
 
                         <div
                           class="checkbox"
+                          x-show="!deleteMode"
                           @click="item.completion ? openUncompleteModal(item) : (activeProject.is_owner ? openCompleteModal(item) : handleNonOwnerCheck(item))"
                           :title="item.completion ? 'Undo completion' : 'Mark as complete'"
                         >
@@ -221,13 +253,13 @@
                           </div>
                         </div>
 
-                        <div class="item-actions" x-show="activeProject.is_owner">
+                        <div class="item-actions" x-show="activeProject.is_owner && !deleteMode">
                           <button class="btn-icon" @click.stop="openEditItemModal(item)" title="Edit">✏</button>
                           <button class="btn-icon danger" @click.stop="openDeleteItemModal(item)" title="Delete">✕</button>
                         </div>
                       </div>
 
-                      <div class="item-footer">
+                      <div class="item-footer" x-show="!deleteMode">
                         <div class="footer-field">
                           <span class="footer-label">PIC:</span>
                           <template x-for="pic in item.pics" :key="pic.id">
@@ -260,10 +292,22 @@
                 </div>
               </template>
 
-              <template x-if="activeProject.is_owner">
+              <!-- Delete mode floating bar -->
+              <div x-show="deleteMode" class="delete-bar">
+                <span x-text="selectedCount() + ' item' + (selectedCount() !== 1 ? 's' : '') + ' selected'"></span>
+                <div style="display:flex;gap:6px;">
+                  <button class="btn btn-secondary" style="padding:5px 12px;" @click="toggleDeleteMode()">Cancel</button>
+                  <button class="btn btn-primary" style="padding:5px 12px;background:var(--danger);border-color:var(--danger);"
+                          @click="openModal('batchDelete')" :disabled="selectedCount() === 0">
+                    Delete
+                  </button>
+                </div>
+              </div>
+
+              <template x-if="activeProject.is_owner && !deleteMode">
                 <div class="items-toolbar">
                   <button class="btn-add-item" @click="openModal('addItem')">+ Add task or section</button>
-                  <button class="btn-import" @click="openModal('import')" title="Bulk import from CSV">⬆ Import Checklist</button>
+                  <button class="btn-import" @click="openModal('import')" title="Bulk import from CSV">⬆ Import</button>
                 </div>
               </template>
 
@@ -344,6 +388,7 @@
   <script src="/js/chat.js"></script>
   <script src="/js/items.js"></script>
   <script src="/js/ws.js"></script>
+  <script src="/js/export.js"></script>
   <script src="/app.js"></script>
   <script defer src="https://unpkg.com/alpinejs@3/dist/cdn.min.js"></script>
 </body>

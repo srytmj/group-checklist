@@ -85,6 +85,23 @@
 .import-fmt-tab.active { background: var(--accent-bg); color: var(--accent); }
 .import-fmt-badge { font-size: 9px; padding: 1px 5px; border-radius: 3px; background: var(--accent); color: #fff; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 
+/* ---- Export modal buttons ---- */
+.export-format-btn {
+  width: 100%; text-align: left; padding: 12px 14px;
+  background: var(--surface); border: 0.5px solid var(--border-med);
+  border-radius: var(--radius); cursor: pointer; transition: all 0.12s;
+}
+.export-format-btn:hover { border-color: var(--accent); background: var(--accent-bg); }
+.export-fmt-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
+.export-fmt-desc { font-size: 11px; color: var(--text-muted); }
+
+/* ---- Header btn active state (delete mode) ---- */
+.header-btn.active {
+  background: rgba(226,75,74,0.08);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
 /* ---- Toast ---- */
 .toast {
   position: fixed; bottom: 20px; right: 20px;

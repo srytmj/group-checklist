@@ -9,6 +9,7 @@
 // js/chat.js     → _chatMethods
 // js/items.js    → _itemMethods
 // js/ws.js       → _wsMethods
+// js/export.js   → _exportMethods
 
 document.addEventListener('alpine:init', () => {
   // Inject modal/popup/toast HTML before Alpine scans the DOM
@@ -60,6 +61,11 @@ document.addEventListener('alpine:init', () => {
 
     draggingIndex: null,
     dragOverIndex: null,
+
+    viewMode: localStorage.getItem('viewMode') || 'tree',
+    deleteMode: false,
+    selectedItems: {},
+    collapsedSections: {},
 
     nonOwnerAssignMode: null,
     nonOwnerAssignItem: null,
@@ -121,6 +127,15 @@ document.addEventListener('alpine:init', () => {
       return this.items.filter(i => i.item_type !== 'section');
     },
 
+    // Items with _sectionId metadata for tree collapse logic
+    get displayItems() {
+      let sectionId = null;
+      return this.items.map(item => {
+        if (item.item_type === 'section') sectionId = item.id;
+        return { ...item, _sectionId: item.item_type === 'section' ? null : sectionId };
+      });
+    },
+
     // ---- Spread methods from separate files ----
     ..._authMethods,
     ..._projectMethods,
@@ -128,6 +143,7 @@ document.addEventListener('alpine:init', () => {
     ..._chatMethods,
     ..._itemMethods,
     ..._wsMethods,
+    ..._exportMethods,
 
   }));
 });

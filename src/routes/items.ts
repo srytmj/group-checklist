@@ -382,6 +382,37 @@ items.patch("/:id", async (c) => {
   return c.json(updated);
 });
 
+// DELETE /batch — bulk delete items (owner only)
+items.delete("/batch", async (c) => {
+  const slug = c.req.param("slug");
+  const user = c.get("user");
+
+  const project = await getProject(slug);
+  if (!project) return c.json({ error: "not found" }, 404);
+  if (!isOwner(project, user?.id)) return c.json({ error: "owner only" }, 403);
+
+  const body = await c.req.json<{ ids?: number[] }>();
+  const ids = body.ids ?? [];
+  if (!Array.isArray(ids) || ids.length === 0) return c.json({ error: "ids required" }, 400);
+
+  await sql`DELETE FROM checklist_items WHERE id = ANY(${ids}::int[]) AND project_id = ${project.id}`;
+
+  await writeLog({
+    project_id: project.id,
+    actor_name: user?.username ?? "unknown",
+    action: "item.deleted",
+    payload: { batch: true, count: ids.length },
+    ip: c.get("ip"),
+    user_agent: c.get("userAgent"),
+  });
+
+  for (const id of ids) {
+    broadcastToRoom(slug, { event: "item.deleted", data: { id } });
+  }
+
+  return c.json({ deleted: ids.length });
+});
+
 // DELETE /:id — delete item
 items.delete("/:id", async (c) => {
   const slug = c.req.param("slug");

@@ -335,6 +335,72 @@ const _itemMethods = {
     }
   },
 
+  // ---- Tree view: section collapse + progress ----
+  toggleSection(sectionId) {
+    this.collapsedSections = { ...this.collapsedSections, [sectionId]: !this.collapsedSections[sectionId] };
+  },
+
+  getSectionTasks(sectionId) {
+    let inside = false;
+    const tasks = [];
+    for (const item of this.items) {
+      if (item.item_type === 'section') {
+        if (item.id === sectionId) { inside = true; continue; }
+        if (inside) break;
+      } else if (inside) {
+        tasks.push(item);
+      }
+    }
+    return tasks;
+  },
+
+  getSectionProgress(sectionId) {
+    const tasks = this.getSectionTasks(sectionId);
+    const total = tasks.length;
+    const done = tasks.filter(t => t.completion).length;
+    return { total, done, pct: total ? Math.round(done / total * 100) : 0 };
+  },
+
+  // ---- Delete mode ----
+  toggleDeleteMode() {
+    this.deleteMode = !this.deleteMode;
+    if (!this.deleteMode) this.selectedItems = {};
+  },
+
+  toggleSelectItem(item) {
+    if (item.item_type === 'section') {
+      const tasks = this.getSectionTasks(item.id);
+      const allSelected = !!this.selectedItems[item.id] && tasks.every(t => this.selectedItems[t.id]);
+      const next = !allSelected;
+      const updates = { [item.id]: next };
+      tasks.forEach(t => { updates[t.id] = next; });
+      this.selectedItems = { ...this.selectedItems, ...updates };
+    } else {
+      this.selectedItems = { ...this.selectedItems, [item.id]: !this.selectedItems[item.id] };
+    }
+  },
+
+  selectedCount() {
+    return Object.values(this.selectedItems).filter(Boolean).length;
+  },
+
+  async confirmBatchDelete() {
+    const ids = Object.entries(this.selectedItems).filter(([, v]) => v).map(([id]) => Number(id));
+    if (!ids.length) return;
+    try {
+      await api('DELETE', `/api/projects/${this.activeProject.slug}/items/batch`, { ids });
+      const idSet = new Set(ids);
+      this.items = this.items.filter(i => !idSet.has(i.id));
+      this.selectedItems = {};
+      this.deleteMode = false;
+      this.closeModal();
+      this.showToast(`Deleted ${ids.length} item${ids.length !== 1 ? 's' : ''}.`);
+    } catch (e) {
+      this.showToast(e.message, 'error');
+      this.closeModal();
+    }
+  },
+
   // ---- Import ----
   downloadTemplate(format = 'md') {
     let content, mime, filename;
