@@ -54,6 +54,7 @@ document.addEventListener('alpine:init', () => {
 
     importError: '',
     importLoading: false,
+    importTab: 'md',
 
     draggingIndex: null,
     dragOverIndex: null,
@@ -662,20 +663,42 @@ document.addEventListener('alpine:init', () => {
     },
 
     // ---- Modals ----
-    // ---- CSV import ----
-    downloadTemplate() {
-      const csv = [
-        'type,title,description',
-        'section,Phase 1 — Getting Started,Overview of the first phase',
-        'task,Set up repository,Create a new repository and initialize the project',
-        'task,Configure environment,Set up environment variables and configurations',
-        'section,Phase 2 — Development,Core development tasks',
-        'task,Implement core features,Build the main application functionality',
-        'task,Write tests,Add unit and integration tests',
-      ].join('\n');
-      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    // ---- CSV / Markdown import ----
+    downloadTemplate(format = 'md') {
+      let content, mime, filename;
+      if (format === 'md') {
+        content = [
+          '## Phase 1 — Getting Started',
+          'Overview of the first phase',
+          '',
+          '- [ ] Set up repository',
+          '  Clone and configure the repo',
+          '- [ ] Configure environment',
+          '  Set up environment variables',
+          '',
+          '## Phase 2 — Development',
+          'Core development tasks',
+          '',
+          '- [ ] Implement core features',
+          '- [ ] Write tests',
+          '  Add unit and integration tests',
+        ].join('\n');
+        mime = 'text/markdown'; filename = 'checklist-template.md';
+      } else {
+        content = [
+          'type,title,description',
+          'section,Phase 1 — Getting Started,Overview of the first phase',
+          'task,Set up repository,Create a new repository and initialize the project',
+          'task,Configure environment,Set up environment variables and configurations',
+          'section,Phase 2 — Development,Core development tasks',
+          'task,Implement core features,Build the main application functionality',
+          'task,Write tests,Add unit and integration tests',
+        ].join('\n');
+        mime = 'text/csv'; filename = 'checklist-template.csv';
+      }
+      const url = URL.createObjectURL(new Blob([content], { type: mime }));
       const a = document.createElement('a');
-      a.href = url; a.download = 'checklist-template.csv'; a.click();
+      a.href = url; a.download = filename; a.click();
       URL.revokeObjectURL(url);
     },
 
@@ -708,7 +731,7 @@ document.addEventListener('alpine:init', () => {
       this.modalError = '';
       if (name === 'guestName') this.guestNameInput = this.guestName;
       if (name === 'addItem') this.itemForm = { title: '', description: '', actor_name: '', item_type: 'task' };
-      if (name === 'import') { this.importError = ''; this.importLoading = false; }
+      if (name === 'import') { this.importError = ''; this.importLoading = false; this.importTab = 'md'; }
     },
     closeModal() {
       this.modal = null;

@@ -302,6 +302,22 @@
     .import-drop-icon { font-size: 26px; line-height: 1; }
     .import-drop-text { font-size: 13px; color: var(--text-muted); }
     .import-drop-hint { font-size: 11px; color: var(--text-muted); opacity: 0.7; }
+    .import-format-tabs {
+      display: flex; gap: 4px; margin-bottom: 10px;
+    }
+    .import-fmt-tab {
+      padding: 5px 12px; border-radius: 6px; border: none;
+      background: none; cursor: pointer; font-size: 12px; font-weight: 500;
+      color: var(--text-muted); transition: all 0.12s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .import-fmt-tab:hover { color: var(--text); background: var(--item-hover-bg); }
+    .import-fmt-tab.active { background: var(--accent-bg); color: var(--accent); }
+    .import-fmt-badge {
+      font-size: 9px; padding: 1px 5px; border-radius: 3px;
+      background: var(--accent); color: #fff; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
 
     /* ---- Auth page ---- */
     .auth-page {
@@ -1029,28 +1045,55 @@
     </div>
   </div>
 
-  <!-- Import CSV -->
+  <!-- Import CSV / Markdown -->
   <div class="modal-backdrop" x-show="modal === 'import'" @click.self="closeModal()">
-    <div class="modal" style="max-width:440px;">
-      <h3>Import from CSV</h3>
-      <p class="modal-sub">Bulk-create tasks and sections from a CSV file. The file must use the exact format below.</p>
+    <div class="modal" style="max-width:460px;">
+      <h3>Import checklist</h3>
+      <p class="modal-sub">Bulk-create tasks and sections from a file. Choose a format below.</p>
       <div class="modal-body">
 
-        <div class="import-template-box">
-          <div class="import-template-label">Required CSV format</div>
-          <code>type,title,description</code>
-          <code class="dim">section,Phase 1 — Getting Started,Overview</code>
-          <code class="dim">task,Set up repository,Clone and configure the repo</code>
-          <code class="dim">task,Write tests,</code>
+        <!-- Format tabs -->
+        <div class="import-format-tabs">
+          <button class="import-fmt-tab" :class="{ active: importTab === 'md' }" @click="importTab = 'md'">Markdown <span class="import-fmt-badge">Recommended</span></button>
+          <button class="import-fmt-tab" :class="{ active: importTab === 'csv' }" @click="importTab = 'csv'">CSV</button>
         </div>
 
-        <button class="btn btn-secondary" style="width:100%;margin-bottom:12px;" @click="downloadTemplate()">⬇ Download template (.csv)</button>
+        <!-- Markdown format preview -->
+        <template x-if="importTab === 'md'">
+          <div class="import-template-box">
+            <div class="import-template-label">Format — .md file</div>
+            <code>## Section title</code>
+            <code class="dim">Optional section description</code>
+            <code>&nbsp;</code>
+            <code>- [ ] Task title</code>
+            <code class="dim">&nbsp;&nbsp;Optional task description (indented)</code>
+            <code>- [ ] Another task</code>
+          </div>
+        </template>
 
+        <!-- CSV format preview -->
+        <template x-if="importTab === 'csv'">
+          <div class="import-template-box">
+            <div class="import-template-label">Format — .csv file</div>
+            <code>type,title,description</code>
+            <code class="dim">section,Phase 1 — Getting Started,Overview</code>
+            <code class="dim">task,Set up repository,Clone and configure</code>
+            <code class="dim">task,Write tests,</code>
+          </div>
+        </template>
+
+        <!-- Download template buttons -->
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <button class="btn btn-secondary" style="flex:1;" @click="downloadTemplate('md')">⬇ Markdown template</button>
+          <button class="btn btn-secondary" style="flex:1;" @click="downloadTemplate('csv')">⬇ CSV template</button>
+        </div>
+
+        <!-- File drop zone -->
         <label class="import-drop-zone" :class="{ loading: importLoading }">
           <div class="import-drop-icon">📄</div>
-          <div class="import-drop-text" x-text="importLoading ? 'Importing…' : 'Click to choose a CSV file'"></div>
-          <div class="import-drop-hint">.csv files only · must match the template above</div>
-          <input type="file" accept=".csv,text/csv" style="display:none;" @change="handleImportFile($event)" :disabled="importLoading" />
+          <div class="import-drop-text" x-text="importLoading ? 'Importing…' : 'Click to choose a file'"></div>
+          <div class="import-drop-hint">.md and .csv files accepted · format auto-detected</div>
+          <input type="file" accept=".md,.markdown,.csv,text/csv,text/markdown,text/plain" style="display:none;" @change="handleImportFile($event)" :disabled="importLoading" />
         </label>
 
         <p class="error-msg" x-show="importError" x-text="importError" style="white-space:pre-wrap;margin-top:10px;"></p>

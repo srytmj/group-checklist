@@ -126,6 +126,56 @@ items.post("/", async (c) => {
   return c.json({ ...item, pics: [], completion: null }, 201);
 });
 
+// Helper: parse a Markdown checklist into items
+function parseMarkdown(content: string): { type: string; title: string; description: string }[] {
+  const lines = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+  const items: { type: string; title: string; description: string }[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Section header: ## Title
+    const secMatch = line.match(/^##\s+(.+)$/);
+    if (secMatch) {
+      const title = secMatch[1].trim();
+      let description = "";
+      // Peek past blank lines — if next real line isn't a heading or list item, it's the caption
+      let j = i + 1;
+      while (j < lines.length && lines[j].trim() === "") j++;
+      if (j < lines.length && !lines[j].match(/^#{1,6}\s/) && !lines[j].match(/^-\s+\[/)) {
+        description = lines[j].trim();
+        i = j + 1;
+      } else {
+        i++;
+      }
+      items.push({ type: "section", title, description });
+      continue;
+    }
+
+    // Task: - [ ] Title  (also accepts - [x] for pre-ticked items)
+    const taskMatch = line.match(/^-\s+\[[ xX]\]\s+(.+)$/);
+    if (taskMatch) {
+      const title = taskMatch[1].trim();
+      let description = "";
+      // Next line indented = description
+      const j = i + 1;
+      if (j < lines.length && /^\s+\S/.test(lines[j])) {
+        description = lines[j].trim();
+        i = j + 1;
+      } else {
+        i++;
+      }
+      items.push({ type: "task", title, description });
+      continue;
+    }
+
+    i++;
+  }
+
+  return items;
+}
+
 // Helper: parse one CSV line respecting quoted fields
 function parseCSVLine(line: string): string[] {
   const result: string[] = [];
@@ -158,45 +208,53 @@ items.post("/import", async (c) => {
 
   const body = await c.req.json<{ content?: string; filename?: string }>();
   const raw = (body.content ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-  const lines = raw.split("\n").filter((l) => l.trim());
+  const filename = (body.filename ?? "").toLowerCase();
 
-  if (lines.length < 2) {
-    return c.json({ error: "File must have a header row and at least one item row." }, 400);
-  }
+  // Detect format: prefer extension, fall back to content sniffing
+  const isMd = filename.endsWith(".md") || filename.endsWith(".markdown");
+  const isCsv = filename.endsWith(".csv");
+  const useMarkdown = isMd || (!isCsv && (raw.trimStart().startsWith("#") || raw.includes("- [ ]")));
 
-  // Validate header
-  const EXPECTED_HEADER = "type,title,description";
-  if (lines[0].trim().toLowerCase() !== EXPECTED_HEADER) {
-    return c.json({
-      error: `Invalid format — first row must be exactly:\n${EXPECTED_HEADER}\n\nFound: ${lines[0].trim()}`,
-    }, 400);
-  }
+  let parsed: { type: string; title: string; description: string }[] = [];
 
-  // Parse and validate rows
-  const parsed: { type: string; title: string; description: string }[] = [];
-  const rowErrors: string[] = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    if (!lines[i].trim()) continue;
-    const cols = parseCSVLine(lines[i]).map((s) => s.trim());
-    const [type = "", title = "", description = ""] = cols;
-
-    if (!["task", "section"].includes(type)) {
-      rowErrors.push(`Row ${i + 1}: "type" must be "task" or "section" (found: "${type}")`);
-      continue;
+  if (useMarkdown) {
+    // ---- Markdown parser ----
+    parsed = parseMarkdown(raw);
+    if (parsed.length === 0) {
+      return c.json({
+        error:
+          "No tasks or sections found.\n\nUse `## Heading` for sections and `- [ ] Title` for tasks:\n\n## Phase 1\n- [ ] First task\n  Optional description",
+      }, 400);
     }
-    if (!title) {
-      rowErrors.push(`Row ${i + 1}: "title" is required`);
-      continue;
+  } else {
+    // ---- CSV parser ----
+    const lines = raw.split("\n").filter((l) => l.trim());
+    if (lines.length < 2) {
+      return c.json({ error: "CSV must have a header row and at least one item row." }, 400);
     }
-    parsed.push({ type, title, description });
-  }
 
-  if (rowErrors.length > 0) {
-    return c.json({ error: rowErrors.join("\n") }, 400);
-  }
-  if (parsed.length === 0) {
-    return c.json({ error: "No valid items found in the file." }, 400);
+    const EXPECTED_HEADER = "type,title,description";
+    if (lines[0].trim().toLowerCase() !== EXPECTED_HEADER) {
+      return c.json({
+        error: `Invalid CSV format — first row must be exactly:\n${EXPECTED_HEADER}\n\nFound: ${lines[0].trim()}`,
+      }, 400);
+    }
+
+    const rowErrors: string[] = [];
+    for (let i = 1; i < lines.length; i++) {
+      if (!lines[i].trim()) continue;
+      const cols = parseCSVLine(lines[i]).map((s) => s.trim());
+      const [type = "", title = "", description = ""] = cols;
+      if (!["task", "section"].includes(type)) {
+        rowErrors.push(`Row ${i + 1}: "type" must be "task" or "section" (found: "${type}")`);
+        continue;
+      }
+      if (!title) { rowErrors.push(`Row ${i + 1}: "title" is required`); continue; }
+      parsed.push({ type, title, description });
+    }
+
+    if (rowErrors.length > 0) return c.json({ error: rowErrors.join("\n") }, 400);
+    if (parsed.length === 0) return c.json({ error: "No valid items found in the CSV." }, 400);
   }
 
   // Get current max display_order
