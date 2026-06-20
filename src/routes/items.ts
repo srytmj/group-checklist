@@ -126,6 +126,113 @@ items.post("/", async (c) => {
   return c.json({ ...item, pics: [], completion: null }, 201);
 });
 
+// Helper: parse one CSV line respecting quoted fields
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+      else inQuotes = !inQuotes;
+    } else if (ch === ',' && !inQuotes) {
+      result.push(current);
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  result.push(current);
+  return result;
+}
+
+// POST /import — bulk create items from a CSV file (owner only)
+items.post("/import", async (c) => {
+  const slug = c.req.param("slug");
+  const user = c.get("user");
+
+  const project = await getProject(slug);
+  if (!project) return c.json({ error: "not found" }, 404);
+  if (!isOwner(project, user?.id)) return c.json({ error: "owner only" }, 403);
+
+  const body = await c.req.json<{ content?: string; filename?: string }>();
+  const raw = (body.content ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const lines = raw.split("\n").filter((l) => l.trim());
+
+  if (lines.length < 2) {
+    return c.json({ error: "File must have a header row and at least one item row." }, 400);
+  }
+
+  // Validate header
+  const EXPECTED_HEADER = "type,title,description";
+  if (lines[0].trim().toLowerCase() !== EXPECTED_HEADER) {
+    return c.json({
+      error: `Invalid format — first row must be exactly:\n${EXPECTED_HEADER}\n\nFound: ${lines[0].trim()}`,
+    }, 400);
+  }
+
+  // Parse and validate rows
+  const parsed: { type: string; title: string; description: string }[] = [];
+  const rowErrors: string[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const cols = parseCSVLine(lines[i]).map((s) => s.trim());
+    const [type = "", title = "", description = ""] = cols;
+
+    if (!["task", "section"].includes(type)) {
+      rowErrors.push(`Row ${i + 1}: "type" must be "task" or "section" (found: "${type}")`);
+      continue;
+    }
+    if (!title) {
+      rowErrors.push(`Row ${i + 1}: "title" is required`);
+      continue;
+    }
+    parsed.push({ type, title, description });
+  }
+
+  if (rowErrors.length > 0) {
+    return c.json({ error: rowErrors.join("\n") }, 400);
+  }
+  if (parsed.length === 0) {
+    return c.json({ error: "No valid items found in the file." }, 400);
+  }
+
+  // Get current max display_order
+  const [{ max_order }] = await sql<{ max_order: number }[]>`
+    SELECT COALESCE(MAX(display_order), -1) AS max_order
+    FROM checklist_items WHERE project_id = ${project.id}
+  `;
+
+  // Bulk insert
+  const created: any[] = [];
+  for (let i = 0; i < parsed.length; i++) {
+    const { type, title, description } = parsed[i];
+    const [item] = await sql`
+      INSERT INTO checklist_items (project_id, title, description, display_order, item_type)
+      VALUES (${project.id}, ${title}, ${description || null}, ${max_order + 1 + i}, ${type})
+      RETURNING id, title, description, display_order, item_type, created_at, updated_at
+    `;
+    created.push({ ...item, pics: [], completion: null });
+  }
+
+  await writeLog({
+    project_id: project.id,
+    actor_name: user?.username ?? "unknown",
+    action: "item.created",
+    payload: { imported: created.length, from: body.filename ?? "csv" },
+    ip: c.get("ip"),
+    user_agent: c.get("userAgent"),
+  });
+
+  for (const item of created) {
+    broadcastToRoom(slug, { event: "item.created", data: item });
+  }
+
+  return c.json({ imported: created.length, items: created }, 201);
+});
+
 // PATCH /reorder — bulk update display_order (must be before /:id to avoid UUID parse error)
 items.patch("/reorder", async (c) => {
   const slug = c.req.param("slug");

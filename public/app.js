@@ -52,6 +52,9 @@ document.addEventListener('alpine:init', () => {
 
     commentPopup: { visible: false, item: null, comments: [], loading: false, input: '', top: 0, left: 0 },
 
+    importError: '',
+    importLoading: false,
+
     draggingIndex: null,
     dragOverIndex: null,
 
@@ -659,11 +662,53 @@ document.addEventListener('alpine:init', () => {
     },
 
     // ---- Modals ----
+    // ---- CSV import ----
+    downloadTemplate() {
+      const csv = [
+        'type,title,description',
+        'section,Phase 1 — Getting Started,Overview of the first phase',
+        'task,Set up repository,Create a new repository and initialize the project',
+        'task,Configure environment,Set up environment variables and configurations',
+        'section,Phase 2 — Development,Core development tasks',
+        'task,Implement core features,Build the main application functionality',
+        'task,Write tests,Add unit and integration tests',
+      ].join('\n');
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = 'checklist-template.csv'; a.click();
+      URL.revokeObjectURL(url);
+    },
+
+    async handleImportFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      this.importError = '';
+      this.importLoading = true;
+      try {
+        const content = await file.text();
+        const result = await api('POST', `/api/projects/${this.activeProject.slug}/items/import`, {
+          content,
+          filename: file.name,
+        });
+        for (const item of result.items) {
+          if (!this.items.find(i => i.id === item.id)) this.items.push(item);
+        }
+        this.closeModal();
+        this.showToast(`Imported ${result.imported} item${result.imported !== 1 ? 's' : ''} successfully.`);
+      } catch (e) {
+        this.importError = e.message;
+      } finally {
+        this.importLoading = false;
+        event.target.value = '';
+      }
+    },
+
     openModal(name) {
       this.modal = name;
       this.modalError = '';
       if (name === 'guestName') this.guestNameInput = this.guestName;
       if (name === 'addItem') this.itemForm = { title: '', description: '', actor_name: '', item_type: 'task' };
+      if (name === 'import') { this.importError = ''; this.importLoading = false; }
     },
     closeModal() {
       this.modal = null;

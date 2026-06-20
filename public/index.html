@@ -251,9 +251,9 @@
     .done-time { font-size: 11px; color: var(--text-muted); }
     .done-empty { font-size: 11px; color: var(--text-muted); font-style: italic; }
 
-    /* ---- Add item ---- */
+    /* ---- Add item / import ---- */
     .btn-add-item {
-      width: 100%; padding: 9px 14px; margin-top: 8px;
+      flex: 1; padding: 9px 14px;
       background: transparent;
       border: 0.5px dashed var(--border-strong);
       border-radius: var(--radius); color: var(--text-muted);
@@ -264,6 +264,44 @@
       border-color: var(--accent); color: var(--accent);
       background: var(--accent-bg);
     }
+    .btn-import {
+      padding: 9px 12px; flex-shrink: 0;
+      background: transparent;
+      border: 0.5px dashed var(--border-strong);
+      border-radius: var(--radius); color: var(--text-muted);
+      cursor: pointer; font-size: 12px; white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .btn-import:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+    .items-toolbar { display: flex; gap: 6px; margin-top: 8px; }
+
+    /* ---- Import modal ---- */
+    .import-template-box {
+      background: var(--bg); border-radius: var(--radius);
+      padding: 10px 12px; margin-bottom: 12px;
+    }
+    .import-template-label {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--text-muted); font-weight: 600; margin-bottom: 6px;
+    }
+    .import-template-box code {
+      display: block; font-family: 'Courier New', monospace;
+      font-size: 11px; line-height: 1.8; color: var(--text);
+    }
+    .import-template-box code.dim { color: var(--text-muted); }
+    .import-drop-zone {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 6px;
+      border: 1.5px dashed var(--border-strong); border-radius: var(--radius);
+      padding: 22px 20px; cursor: pointer; transition: all 0.15s;
+      text-align: center;
+    }
+    .import-drop-zone:hover,
+    .import-drop-zone:focus-within { border-color: var(--accent); background: var(--accent-bg); }
+    .import-drop-zone.loading { opacity: 0.5; pointer-events: none; }
+    .import-drop-icon { font-size: 26px; line-height: 1; }
+    .import-drop-text { font-size: 13px; color: var(--text-muted); }
+    .import-drop-hint { font-size: 11px; color: var(--text-muted); opacity: 0.7; }
 
     /* ---- Auth page ---- */
     .auth-page {
@@ -736,7 +774,10 @@
               </template>
 
               <template x-if="activeProject.is_owner">
-                <button class="btn-add-item" @click="openModal('addItem')">+ Add task or section</button>
+                <div class="items-toolbar">
+                  <button class="btn-add-item" @click="openModal('addItem')">+ Add task or section</button>
+                  <button class="btn-import" @click="openModal('import')" title="Bulk import from CSV">⬆ Import CSV</button>
+                </div>
               </template>
 
             </div>
@@ -984,6 +1025,38 @@
       <div class="modal-actions">
         <button class="btn btn-secondary" @click="closeModal()">Cancel</button>
         <button class="btn btn-primary" style="background:var(--danger);border-color:var(--danger);" @click="confirmUncomplete()">Undo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import CSV -->
+  <div class="modal-backdrop" x-show="modal === 'import'" @click.self="closeModal()">
+    <div class="modal" style="max-width:440px;">
+      <h3>Import from CSV</h3>
+      <p class="modal-sub">Bulk-create tasks and sections from a CSV file. The file must use the exact format below.</p>
+      <div class="modal-body">
+
+        <div class="import-template-box">
+          <div class="import-template-label">Required CSV format</div>
+          <code>type,title,description</code>
+          <code class="dim">section,Phase 1 — Getting Started,Overview</code>
+          <code class="dim">task,Set up repository,Clone and configure the repo</code>
+          <code class="dim">task,Write tests,</code>
+        </div>
+
+        <button class="btn btn-secondary" style="width:100%;margin-bottom:12px;" @click="downloadTemplate()">⬇ Download template (.csv)</button>
+
+        <label class="import-drop-zone" :class="{ loading: importLoading }">
+          <div class="import-drop-icon">📄</div>
+          <div class="import-drop-text" x-text="importLoading ? 'Importing…' : 'Click to choose a CSV file'"></div>
+          <div class="import-drop-hint">.csv files only · must match the template above</div>
+          <input type="file" accept=".csv,text/csv" style="display:none;" @change="handleImportFile($event)" :disabled="importLoading" />
+        </label>
+
+        <p class="error-msg" x-show="importError" x-text="importError" style="white-space:pre-wrap;margin-top:10px;"></p>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" @click="closeModal()">Close</button>
       </div>
     </div>
   </div>
