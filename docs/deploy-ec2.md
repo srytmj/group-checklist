@@ -2,11 +2,13 @@
 
 Runs the app on an EC2 instance with **Neon** as the default database. Swap to **AWS RDS** at any point by changing two env vars.
 
+Live at: **https://cheky.suryatmaja.dev**
+
 ## Prerequisites
 
 - An AWS account
 - A cloned copy of this repo
-- (Optional) A domain name pointed at your EC2 instance for HTTPS
+- Domain managed in Cloudflare (for HTTPS — see [Part 5](#part-5--https-via-cloudflare-origin-certificate))
 
 ---
 
@@ -28,7 +30,40 @@ Runs the app on an EC2 instance with **Neon** as the default database. Swap to *
 
 ---
 
-## Part 2 — First-time server setup
+## Part 2 — Before you SSH in: Cloudflare setup
+
+Do this in the Cloudflare dashboard **before** running the init script so DNS is ready.
+
+### 2a — Add DNS record
+
+Cloudflare dashboard → `suryatmaja.dev` → **DNS → Add record**:
+
+| Field        | Value                  |
+|--------------|------------------------|
+| Type         | A                      |
+| Name         | cheky                  |
+| IPv4 address | your EC2 Elastic IP    |
+| Proxy status | Proxied (orange cloud) |
+
+### 2b — Set SSL mode
+
+Cloudflare dashboard → **SSL/TLS → Overview** → select **Full (strict)**
+
+> Do not use "Flexible" — it sends traffic to EC2 unencrypted.
+
+### 2c — Create Origin Certificate
+
+1. Cloudflare dashboard → **SSL/TLS → Origin Server → Create Certificate**
+2. Leave defaults (RSA 2048, `*.suryatmaja.dev`) → click **Create**
+3. Copy both values — you only see them once:
+   - **Origin Certificate** → you'll paste this into `cert.pem`
+   - **Private Key** → you'll paste this into `key.pem`
+
+Keep these in a text editor — `init.sh` will prompt you to install them.
+
+---
+
+## Part 3 — SSH in, clone, and run init.sh
 
 ```bash
 # SSH into the instance
@@ -36,48 +71,30 @@ ssh -i your-key.pem ubuntu@YOUR_EC2_IP
 
 # Clone the repo
 git clone https://github.com/YOUR_USER/group-checklist.git ~/group-checklist
-
-# Run the one-time setup (installs Bun, Nginx, Certbot)
 cd ~/group-checklist
-bash scripts/setup-ec2.sh
+
+# Run the init script — walks you through everything interactively
+bash init.sh
 ```
+
+`init.sh` will:
+
+1. Install Nginx and Bun
+2. Run `bun install`
+3. Create `.env` from the template and open it for editing (fill in `DATABASE_URL` and `JWT_SECRET`)
+4. Run database migrations
+5. Pause and prompt you to install the Cloudflare Origin Certificate
+6. Configure Nginx for `cheky.suryatmaja.dev`
+7. Install and start the systemd service
+8. Print the live URL when done
 
 ---
 
-## Part 3 — Configure the app
+## Part 4 — Set up Nginx and the systemd service (manual alternative)
+
+If you prefer to run each step yourself instead of using `init.sh`:
 
 ```bash
-cd ~/group-checklist
-cp .env.example .env
-nano .env
-```
-
-Minimum required changes in `.env`:
-
-```env
-# Generate a secret:  openssl rand -hex 32
-JWT_SECRET=your-random-secret
-
-# Neon connection string (from your Neon dashboard)
-DATABASE_URL=postgresql://user:password@ep-xxx.neon.tech/dbname
-DB_SSL=prefer
-```
-
-Then install dependencies and run the database migrations:
-
-```bash
-bun install
-bun scripts/migrate.ts
-```
-
----
-
-## Part 4 — Set up Nginx and the systemd service
-
-```bash
-# Set your domain — or use the EC2 public IP if you have no domain
-export DEPLOY_DOMAIN=yourdomain.com
-
 # Install Nginx config + systemd service unit in one step
 bash scripts/deploy.sh --nginx --service
 
@@ -88,19 +105,6 @@ sudo systemctl start group-checklist
 sudo systemctl status group-checklist
 curl http://localhost:3000
 ```
-
----
-
-## Part 5 — Enable HTTPS (requires a domain)
-
-```bash
-sudo certbot --nginx -d yourdomain.com
-
-# Test auto-renewal
-sudo certbot renew --dry-run
-```
-
-> Skip this step if you're accessing the app by IP address — Let's Encrypt requires a domain name.
 
 ---
 

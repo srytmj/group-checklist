@@ -2,6 +2,8 @@
 
 Realtime multi-user checklist app. Built with Bun, Hono, PostgreSQL, and Alpine.js.
 
+**Live:** https://cheky.suryatmaja.dev
+
 ## Stack
 
 - **Runtime** — Bun
@@ -23,7 +25,7 @@ bun run dev
 
 | Platform | Guide |
 |----------|-------|
-| AWS EC2  | [docs/deploy-ec2.md](docs/deploy-ec2.md) |
+| AWS EC2  | [docs/deploy-ec2.md](docs/deploy-ec2.md) — clone the repo, run `bash init.sh` |
 | Fly.io   | See `fly.toml` — auto-deploy on `git push` via Fly.io dashboard |
 
 ## Database migrations
