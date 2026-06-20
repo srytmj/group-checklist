@@ -22,8 +22,16 @@ app.onError((err, c) => {
   return c.json({ error: err.message || "Internal Server Error" }, 500);
 });
 
-// Health check
-app.get("/health", (c) => c.json({ ok: true, ts: new Date().toISOString() }));
+// Health check — also pings the DB so Neon doesn't scale to zero
+app.get("/health", async (c) => {
+  try {
+    const { default: sql } = await import("./db");
+    await sql`SELECT 1`;
+    return c.json({ ok: true, db: "ok", ts: new Date().toISOString() });
+  } catch (e: any) {
+    return c.json({ ok: false, db: e.message, ts: new Date().toISOString() }, 503);
+  }
+});
 
 // Temporary debug — remove after fixing auth
 app.get("/debug/cookie", (c) => {
