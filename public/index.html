@@ -563,6 +563,72 @@
     .copy-desc-btn:focus { opacity: 1; outline: none; }
 
     [x-cloak] { display: none !important; }
+
+    /* ── Mobile ──────────────────────────────────────────────── */
+    .mobile-topbar {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: var(--bg);
+      border-bottom: 0.5px solid var(--border);
+      flex-shrink: 0;
+    }
+    .mobile-topbar-title {
+      flex: 1; font-size: 14px; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .mobile-hamburger {
+      background: none; border: none; font-size: 20px; line-height: 1;
+      cursor: pointer; color: var(--text); padding: 2px 4px; flex-shrink: 0;
+    }
+    .mobile-panel-tabs {
+      display: flex; gap: 2px; flex-shrink: 0;
+    }
+    .mobile-panel-tab {
+      padding: 4px 10px; border-radius: 6px; border: none; background: none;
+      font-size: 12px; font-weight: 500; cursor: pointer; color: var(--text-muted);
+    }
+    .mobile-panel-tab.active { background: var(--accent-bg); color: var(--accent); }
+    .mobile-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4); z-index: 150;
+    }
+
+    @media (max-width: 768px) {
+      .mobile-topbar { display: flex; }
+      .mobile-overlay { display: block; }
+
+      /* Sidebar becomes a slide-in drawer */
+      .sidebar {
+        position: fixed !important;
+        top: 0; left: 0; bottom: 0; z-index: 200;
+        width: 260px !important; min-width: 260px !important;
+        transform: translateX(-100%);
+        transition: transform 0.22s ease;
+        box-shadow: 4px 0 16px rgba(0,0,0,0.18);
+      }
+      .sidebar.mobile-open { transform: translateX(0); }
+
+      /* Always show sidebar inner content when open on mobile */
+      .sidebar .sidebar-inner { display: flex !important; }
+
+      /* Desktop sidebar collapse button hidden on mobile */
+      .sidebar-toggle-row { display: none; }
+
+      /* Panels: only one visible at a time */
+      .content-panels { flex-direction: row; }
+      .content-panels .main-content { flex: 1 0 100%; max-width: 100%; }
+      .content-panels .right-panel { width: 100% !important; min-width: 100% !important; border-left: none !important; flex-shrink: 0; }
+      .content-panels.show-chat .main-content { display: none; }
+      .content-panels:not(.show-chat) .right-panel { display: none; }
+
+      /* Comfortable touch targets */
+      .item-main { min-height: 44px; }
+      .btn, .btn-primary, .btn-secondary { min-height: 40px; }
+      .chat-input { font-size: 16px; } /* prevents iOS zoom */
+      .modal { margin: 12px; max-height: calc(100vh - 24px); overflow-y: auto; }
+    }
   </style>
 </head>
 <body x-data="app" x-init="init()" x-cloak>
@@ -596,8 +662,19 @@
   <!-- Main layout -->
   <div class="layout" x-show="!loading && (user || activeProject)">
 
+    <!-- Mobile sidebar overlay -->
+    <div class="mobile-overlay" x-show="mobileSidebarOpen" @click="mobileSidebarOpen = false" style="display:none;"></div>
+
     <!-- Sidebar -->
-    <aside class="sidebar" :class="{ collapsed: !sidebarOpen }">
+    <aside class="sidebar" :class="{ collapsed: !sidebarOpen, 'mobile-open': mobileSidebarOpen }">
+      <!-- Mobile sidebar header -->
+      <div class="mobile-sidebar-header" x-show="mobileSidebarOpen" style="display:flex;align-items:center;padding:12px 12px 8px;gap:8px;border-bottom:0.5px solid var(--border);flex-shrink:0;">
+        <div class="sidebar-brand" style="flex:1;">Group Checklist</div>
+        <button class="btn-link" @click="toggleTheme()" :title="isDark ? 'Switch to light' : 'Switch to dark'" style="font-size:15px;">
+          <span x-text="isDark ? '☀' : '🌙'"></span>
+        </button>
+        <button class="btn-link" @click="mobileSidebarOpen = false" style="font-size:18px;padding:2px 4px;">✕</button>
+      </div>
       <div class="sidebar-toggle-row">
         <button class="btn-link" @click="sidebarOpen = !sidebarOpen" :title="sidebarOpen ? 'Collapse' : 'Expand'" style="font-size:17px;flex-shrink:0;padding:0 2px;">
           <span x-text="sidebarOpen ? '‹' : '›'"></span>
@@ -607,7 +684,7 @@
           <span x-text="isDark ? '☀' : '🌙'"></span>
         </button>
       </div>
-      <div x-show="sidebarOpen" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+      <div class="sidebar-inner" x-show="sidebarOpen || mobileSidebarOpen" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
 
       <div style="padding: 8px 6px 4px;">
         <button class="btn-new-project" @click="openModal('createProject')" x-show="user">
@@ -632,7 +709,7 @@
         <template x-if="!user && activeProject">
           <div style="padding: 10px; color: var(--text-muted); font-size: 12px; line-height: 1.6;">
             Viewing shared project.<br>
-            <a href="#" style="color: var(--accent);" @click.prevent="authMode='login'">Sign in</a> to manage your own.
+            <a href="#" style="color: var(--accent);" @click.prevent="authMode='login'; openModal('auth')">Sign in</a> to manage your own.
           </div>
         </template>
       </div>
@@ -666,6 +743,16 @@
       <template x-if="activeProject">
         <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
 
+          <!-- Mobile top bar -->
+          <div class="mobile-topbar">
+            <button class="mobile-hamburger" @click="mobileSidebarOpen = true">☰</button>
+            <span class="mobile-topbar-title" x-text="activeProject.name"></span>
+            <div class="mobile-panel-tabs">
+              <button class="mobile-panel-tab" :class="{ active: mobilePanel === 'items' }" @click="mobilePanel = 'items'">Items</button>
+              <button class="mobile-panel-tab" :class="{ active: mobilePanel === 'chat' }" @click="mobilePanel = 'chat'">Chat</button>
+            </div>
+          </div>
+
           <!-- Header -->
           <div class="main-header">
             <div class="main-header-top">
@@ -683,7 +770,7 @@
                 </template>
                 <button class="header-btn" @click="copyLink()">🔗 Copy link</button>
                 <template x-if="activeProject.is_owner">
-                  <button class="btn-icon danger" style="padding:5px 8px;" @click="deleteProject()" title="Delete project">🗑</button>
+                  <button class="btn-icon danger" style="padding:5px 8px;" @click="openDeleteProjectModal()" title="Delete project">🗑</button>
                 </template>
               </div>
             </div>
@@ -694,7 +781,7 @@
           </div>
 
           <!-- Body: items + right panel -->
-          <div style="flex:1;display:flex;overflow:hidden;">
+          <div class="content-panels" :class="{ 'show-chat': mobilePanel === 'chat' }" style="flex:1;display:flex;overflow:hidden;">
           <div class="main-content" style="flex:1;">
             <div class="items-wrap">
 
@@ -820,7 +907,7 @@
                       <div>
                         <div class="chat-msg-meta">
                           <span class="chat-sender" x-text="msg.sender_name"></span>
-                          <span class="chat-ts" x-text="new Date(msg.created_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})"></span>
+                          <span class="chat-ts" x-text="new Date(msg.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) + ' · ' + new Date(msg.created_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})"></span>
                         </div>
                         <div class="chat-body" x-text="msg.body"></div>
                       </div>
@@ -829,7 +916,7 @@
                 </div>
                 <template x-if="!user">
                   <div style="padding:8px 12px 10px;font-size:12px;color:var(--text-muted);text-align:center;border-top:0.5px solid var(--border);">
-                    <a @click.prevent="authMode='login'" style="color:var(--accent);cursor:pointer;">Sign in</a> to send messages.
+                    <a @click.prevent="authMode='login'; openModal('auth')" style="color:var(--accent);cursor:pointer;">Sign in</a> to send messages.
                   </div>
                 </template>
                 <template x-if="user">
@@ -1104,6 +1191,45 @@
     </div>
   </div>
 
+  <!-- Auth modal (shown to guests while viewing a project) -->
+  <div class="modal-backdrop" x-show="modal === 'auth'" @click.self="closeModal()">
+    <div class="modal" style="max-width:360px;">
+      <h3 x-text="authMode === 'login' ? 'Sign in' : 'Create account'"></h3>
+      <p class="modal-sub">Group Checklist</p>
+      <div class="modal-body" style="padding-top:4px;">
+        <div class="form-group">
+          <label>Username</label>
+          <input class="form-control" x-model="authUser" @keyup.enter="submitAuth()" placeholder="Enter username" autocomplete="username" />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input class="form-control" type="password" x-model="authPass" @keyup.enter="submitAuth()" placeholder="Enter password" autocomplete="current-password" />
+        </div>
+        <p class="error-msg" x-show="authError" x-text="authError"></p>
+        <button class="btn btn-primary btn-block" style="margin-top:4px;" @click="submitAuth()" :disabled="authLoading">
+          <span x-text="authLoading ? 'Please wait...' : (authMode === 'login' ? 'Sign in' : 'Create account')"></span>
+        </button>
+        <p class="auth-switch" style="text-align:center;margin-top:10px;">
+          <span x-show="authMode === 'login'">No account? <a @click="authMode='register'; authError=''">Register</a></span>
+          <span x-show="authMode === 'register'">Already have one? <a @click="authMode='login'; authError=''">Sign in</a></span>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete project -->
+  <div class="modal-backdrop" x-show="modal === 'deleteProject'" @click.self="closeModal()">
+    <div class="modal">
+      <h3>Delete project?</h3>
+      <p class="modal-sub" x-text="activeProject?.name"></p>
+      <p style="font-size:13px;color:var(--text-muted);margin-top:4px;">All items, completions, and logs will be permanently deleted. This cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" @click="closeModal()">Cancel</button>
+        <button class="btn btn-primary" style="background:var(--danger);border-color:var(--danger);" @click="confirmDeleteProject()">Delete</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Delete item -->
   <div class="modal-backdrop" x-show="modal === 'deleteItem'" @click.self="closeModal()">
     <div class="modal">
@@ -1165,7 +1291,7 @@
       </div>
     </template>
     <div x-show="!user" class="comment-guest">
-      <a @click="closeCommentPopup(); authMode='login';" style="color:var(--accent);cursor:pointer;">Sign in</a> to leave a comment. Guests can view only.
+      <a @click="closeCommentPopup(); authMode='login'; openModal('auth');" style="color:var(--accent);cursor:pointer;">Sign in</a> to leave a comment. Guests can view only.
     </div>
   </div>
 

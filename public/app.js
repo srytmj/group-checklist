@@ -25,6 +25,8 @@ document.addEventListener('alpine:init', () => {
     guestNameInput: '',
 
     sidebarOpen: true,
+    mobileSidebarOpen: false,
+    mobilePanel: 'items',
 
     authMode: 'login',
     authForm: { username: '', password: '' },
@@ -127,6 +129,7 @@ document.addEventListener('alpine:init', () => {
         const endpoint = this.authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
         this.user = await api('POST', endpoint, this.authForm);
         this.authForm = { username: '', password: '' };
+        this.closeModal();
         await this.loadProjects();
         await this.handleRoute();
       } catch (e) {
@@ -159,6 +162,8 @@ document.addEventListener('alpine:init', () => {
     },
 
     async selectProject(slug) {
+      this.mobileSidebarOpen = false;
+      this.mobilePanel = 'items';
       window.location.hash = `#/p/${slug}`;
     },
 
@@ -211,8 +216,11 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
-    async deleteProject() {
-      if (!confirm(`Delete project "${this.activeProject.name}"? This cannot be undone.`)) return;
+    openDeleteProjectModal() {
+      this.openModal('deleteProject');
+    },
+
+    async confirmDeleteProject() {
       try {
         await api('DELETE', `/api/projects/${this.activeProject.slug}`);
         this.projects = this.projects.filter(p => p.id !== this.activeProject.id);
@@ -222,6 +230,7 @@ document.addEventListener('alpine:init', () => {
         this.logsData = [];
         this.disconnectWs();
         window.location.hash = '';
+        this.closeModal();
         this.showToast('Project deleted.');
       } catch (e) {
         this.showToast(e.message, 'error');
@@ -367,7 +376,9 @@ document.addEventListener('alpine:init', () => {
       try {
         const pic = await api('POST', `/api/projects/${this.activeProject.slug}/items/${this.picTargetItem.id}/pics`, payload);
         const idx = this.items.findIndex(i => i.id === this.picTargetItem.id);
-        if (idx !== -1) this.items[idx] = { ...this.items[idx], pics: [...this.items[idx].pics, pic] };
+        if (idx !== -1 && !(this.items[idx].pics ?? []).find(p => p.id === pic.id)) {
+          this.items[idx] = { ...this.items[idx], pics: [...(this.items[idx].pics ?? []), pic] };
+        }
         this.closeModal();
         this.picForm = { name: '', actor_name: '' };
         this.picTargetItem = null;
@@ -558,7 +569,9 @@ document.addEventListener('alpine:init', () => {
             ...(!this.user ? { actor_name: actorName } : {}),
           });
           const idx = this.items.findIndex(i => i.id === item.id);
-          if (idx !== -1) this.items[idx] = { ...this.items[idx], pics: [...this.items[idx].pics, pic] };
+          if (idx !== -1 && !(this.items[idx].pics ?? []).find(p => p.id === pic.id)) {
+            this.items[idx] = { ...this.items[idx], pics: [...(this.items[idx].pics ?? []), pic] };
+          }
           this.closeModal();
         } catch (e) {
           this.nonOwnerAssignError = e.message;
@@ -732,6 +745,7 @@ document.addEventListener('alpine:init', () => {
       if (name === 'guestName') this.guestNameInput = this.guestName;
       if (name === 'addItem') this.itemForm = { title: '', description: '', actor_name: '', item_type: 'task' };
       if (name === 'import') { this.importError = ''; this.importLoading = false; this.importTab = 'md'; }
+      if (name === 'auth') { this.authError = ''; }
     },
     closeModal() {
       this.modal = null;
@@ -829,8 +843,8 @@ document.addEventListener('alpine:init', () => {
         }
         case 'item.pic_added': {
           const idx = this.items.findIndex(i => i.id === data.item_id);
-          if (idx !== -1 && !this.items[idx].pics.find(p => p.id === data.pic.id)) {
-            this.items[idx] = { ...this.items[idx], pics: [...this.items[idx].pics, data.pic] };
+          if (idx !== -1 && !(this.items[idx].pics ?? []).find(p => p.id === data.pic.id)) {
+            this.items[idx] = { ...this.items[idx], pics: [...(this.items[idx].pics ?? []), data.pic] };
           }
           refreshLogs();
           break;
