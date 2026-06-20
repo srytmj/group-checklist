@@ -66,6 +66,8 @@ document.addEventListener('alpine:init', () => {
     deleteMode: false,
     selectedItems: {},
     collapsedSections: {},
+    sectionMap: {},
+    showProjectMenu: false,
 
     nonOwnerAssignMode: null,
     nonOwnerAssignItem: null,
@@ -96,6 +98,7 @@ document.addEventListener('alpine:init', () => {
       this.sidebarOpen = localStorage.getItem('sidebarOpen') !== 'false';
       this.applyTheme();
       this.$watch('sidebarOpen', (v) => localStorage.setItem('sidebarOpen', String(v)));
+      this.$watch('items', () => { this.sectionMap = this._buildSectionMap(); });
       try {
         this.user = await api('GET', '/api/auth/me');
       } catch {
@@ -125,15 +128,6 @@ document.addEventListener('alpine:init', () => {
 
     get taskItems() {
       return this.items.filter(i => i.item_type !== 'section');
-    },
-
-    // Items with _sectionId metadata for tree collapse logic
-    get displayItems() {
-      let sectionId = null;
-      return this.items.map(item => {
-        if (item.item_type === 'section') sectionId = item.id;
-        return { ...item, _sectionId: item.item_type === 'section' ? null : sectionId };
-      });
     },
 
     // ---- Spread methods from separate files ----

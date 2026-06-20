@@ -123,6 +123,32 @@
       <template x-if="activeProject">
         <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
 
+          <!-- Click-outside backdrop for project menu -->
+          <div x-show="showProjectMenu" @click="showProjectMenu = false"
+               style="position:fixed;inset:0;z-index:49;" aria-hidden="true"></div>
+
+          <!-- Project settings dropdown (shared between mobile/desktop) -->
+          <div x-show="showProjectMenu" class="project-menu-dropdown">
+            <button class="project-menu-item" @click="showProjectMenu = false; openModal('export')"><span>📤</span> Export</button>
+            <button class="project-menu-item" @click="showProjectMenu = false; copyLink()"><span>🔗</span> Copy link</button>
+            <button class="project-menu-item" @click="showProjectMenu = false; toggleViewMode()">
+              <span x-text="viewMode === 'tree' ? '≡' : '🌲'"></span>
+              <span x-text="viewMode === 'tree' ? 'Flat view' : 'Tree view'"></span>
+            </button>
+            <button x-show="activeProject.is_owner" class="project-menu-item" @click="showProjectMenu = false; toggleVisibility()">
+              <span x-text="activeProject.visibility === 'public' ? '🔒' : '🌐'"></span>
+              <span x-text="activeProject.visibility === 'public' ? 'Make private' : 'Make public'"></span>
+            </button>
+            <button x-show="activeProject.is_owner" class="project-menu-item" :class="{ active: deleteMode }" @click="showProjectMenu = false; toggleDeleteMode()">
+              <span>☑</span>
+              <span x-text="deleteMode ? 'Cancel select' : 'Select items'"></span>
+            </button>
+            <div x-show="activeProject.is_owner" class="project-menu-divider"></div>
+            <button x-show="activeProject.is_owner" class="project-menu-item danger" @click="showProjectMenu = false; openDeleteProjectModal()">
+              <span>🗑</span> Delete project
+            </button>
+          </div>
+
           <!-- Mobile top bar -->
           <div class="mobile-topbar">
             <button class="mobile-hamburger" @click="mobileSidebarOpen = true">☰</button>
@@ -131,14 +157,9 @@
               <button class="mobile-panel-tab" :class="{ active: mobilePanel === 'items' }" @click="mobilePanel = 'items'">Items</button>
               <button class="mobile-panel-tab" :class="{ active: mobilePanel === 'chat' }" @click="mobilePanel = 'chat'">Chat</button>
             </div>
-            <button class="btn-link" @click="openModal('export')" title="Export" style="font-size:16px;padding:2px 4px;">📤</button>
-            <button class="btn-link" @click="copyLink()" title="Copy link" style="font-size:16px;padding:2px 4px;">🔗</button>
-            <template x-if="activeProject.is_owner">
-              <button class="btn-link" @click="toggleDeleteMode()" :style="deleteMode ? 'color:var(--danger)' : ''" :title="deleteMode ? 'Cancel delete mode' : 'Select items to delete'" style="font-size:15px;padding:2px 4px;">☑</button>
-            </template>
-            <template x-if="activeProject.is_owner">
-              <button class="btn-link" @click="openDeleteProjectModal()" title="Delete project" style="font-size:16px;padding:2px 4px;color:var(--danger);">🗑</button>
-            </template>
+            <button class="btn-link" :class="{ 'pmenu-active': showProjectMenu || deleteMode }"
+                    @click="showProjectMenu = !showProjectMenu" title="Project settings"
+                    style="font-size:17px;padding:2px 8px;border-radius:6px;">⚙</button>
           </div>
 
           <!-- Header -->
@@ -146,29 +167,12 @@
             <div class="main-header-top">
               <h1 class="main-title" x-text="activeProject.name"></h1>
               <div class="header-actions">
-                <button class="header-btn" @click="toggleViewMode()" :title="viewMode === 'tree' ? 'Switch to flat view' : 'Switch to tree view'">
-                  <span x-text="viewMode === 'tree' ? '≡ Flat' : '🌲 Tree'"></span>
+                <span class="header-visibility-badge">
+                  <span x-text="activeProject.visibility === 'public' ? '🌐 Public' : '🔒 Private'"></span>
+                </span>
+                <button class="header-btn" :class="{ active: showProjectMenu || deleteMode }" @click="showProjectMenu = !showProjectMenu">
+                  ⚙ Project ▾
                 </button>
-                <button class="header-btn" @click="openModal('export')">📤 Export</button>
-                <template x-if="activeProject.is_owner">
-                  <button class="header-btn" :class="{ active: deleteMode }" @click="toggleDeleteMode()">
-                    <span x-text="deleteMode ? '✕ Cancel' : '☑ Select'"></span>
-                  </button>
-                </template>
-                <template x-if="activeProject.is_owner">
-                  <button class="header-btn" @click="toggleVisibility()">
-                    <span x-text="activeProject.visibility === 'public' ? '🌐 Public' : '🔒 Private'"></span>
-                  </button>
-                </template>
-                <template x-if="!activeProject.is_owner">
-                  <span class="header-btn" style="cursor:default">
-                    <span x-text="activeProject.visibility === 'public' ? '🌐 Public' : '🔒 Private'"></span>
-                  </span>
-                </template>
-                <button class="header-btn" @click="copyLink()">🔗 Copy link</button>
-                <template x-if="activeProject.is_owner">
-                  <button class="btn-icon danger" style="padding:5px 8px;" @click="openDeleteProjectModal()" title="Delete project">🗑</button>
-                </template>
               </div>
             </div>
             <p class="progress-label" x-text="items.filter(i=>i.completion).length + ' of ' + items.filter(i=>i.item_type!=='section').length + ' done'"></p>
@@ -182,14 +186,14 @@
           <div class="main-content" style="flex:1;">
             <div class="items-wrap">
 
-              <template x-for="(item, index) in displayItems" :key="item.id">
+              <template x-for="(item, index) in items" :key="item.id">
                 <div
-                  x-show="item.item_type === 'section' || viewMode === 'flat' || !item._sectionId || !collapsedSections[item._sectionId]"
+                  x-show="item.item_type === 'section' || viewMode === 'flat' || !sectionMap[item.id] || !collapsedSections[sectionMap[item.id]]"
                   :class="{
                     'item': item.item_type !== 'section',
                     'section-item': item.item_type === 'section',
                     'done': item.item_type !== 'section' && !!item.completion,
-                    'tree-child': viewMode === 'tree' && item.item_type !== 'section' && !!item._sectionId,
+                    'tree-child': viewMode === 'tree' && item.item_type !== 'section' && !!sectionMap[item.id],
                     'dragging': activeProject.is_owner && !deleteMode && draggingIndex === index,
                     'drag-over': activeProject.is_owner && !deleteMode && dragOverIndex === index && draggingIndex !== index
                   }"

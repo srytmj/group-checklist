@@ -75,6 +75,35 @@
   color: var(--text-sub); cursor: pointer; transition: all 0.12s;
 }
 .header-btn:hover { color: var(--text); border-color: var(--border-strong); }
+.header-btn.active { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+
+.header-visibility-badge {
+  font-size: 11px; color: var(--text-muted); padding: 4px 8px;
+  border-radius: 6px; border: 0.5px solid var(--border);
+  background: var(--surface); white-space: nowrap;
+}
+
+/* ---- Project menu dropdown ---- */
+.project-menu-dropdown {
+  position: fixed; top: 56px; right: 16px;
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg); min-width: 200px;
+  z-index: 50; overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.13);
+}
+.project-menu-item {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 10px 14px;
+  border: none; background: none;
+  cursor: pointer; font-size: 13px; color: var(--text);
+  text-align: left; transition: background 0.1s; font-family: inherit;
+}
+.project-menu-item:hover { background: var(--item-hover-bg); }
+.project-menu-item.active { color: var(--accent); }
+.project-menu-item.danger { color: var(--danger); }
+.project-menu-item.danger:hover { background: rgba(226,75,74,0.08); }
+.project-menu-divider { height: 1px; background: var(--border); margin: 4px 0; }
+.pmenu-active { color: var(--accent) !important; }
 
 .progress-label { font-size: 11px; color: var(--text-muted); margin-bottom: 5px; }
 .progress-bar-wrap { height: 3px; background: var(--border); border-radius: 2px; }

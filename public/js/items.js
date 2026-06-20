@@ -401,6 +401,16 @@ const _itemMethods = {
     }
   },
 
+  _buildSectionMap() {
+    const map = {};
+    let sid = null;
+    for (const item of this.items) {
+      if (item.item_type === 'section') sid = item.id;
+      else map[item.id] = sid;
+    }
+    return map;
+  },
+
   // ---- Import ----
   downloadTemplate(format = 'md') {
     let content, mime, filename;

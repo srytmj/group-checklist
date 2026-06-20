@@ -15,6 +15,7 @@
 
 @media (max-width: 768px) {
   .mobile-topbar { display: flex; }
+  .project-menu-dropdown { top: 48px; right: 8px; }
 
   /* Sidebar becomes a slide-in drawer */
   .sidebar {
