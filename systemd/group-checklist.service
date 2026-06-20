@@ -1,0 +1,22 @@
+[Unit]
+Description=Group Checklist App (Bun + Hono)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/group-checklist
+
+# Loads all KEY=VALUE lines from .env in the app directory
+EnvironmentFile=/home/ubuntu/group-checklist/.env
+
+ExecStart=/home/ubuntu/.bun/bin/bun src/index.ts
+Restart=on-failure
+RestartSec=5
+
+# Stream stdout/stderr to journald (view with: journalctl -u group-checklist -f)
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

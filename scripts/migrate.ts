@@ -7,10 +7,9 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-const sql = postgres(process.env.DATABASE_URL, {
-  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
-  max: 1,
-});
+const sslEnv = process.env.DB_SSL ?? "prefer";
+const ssl = sslEnv === "disable" ? false : (sslEnv as "prefer" | "require");
+const sql = postgres(process.env.DATABASE_URL, { ssl, max: 1 });
 
 const migrationPath = resolve(import.meta.dir, "../migrations/001_init.sql");
 const migration = readFileSync(migrationPath, "utf-8");
