@@ -59,6 +59,35 @@
 /* ---- Main ---- */
 .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
+/* ---- Dashboard ---- */
+.dashboard { padding: 28px 32px; max-width: 960px; }
+.dash-topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.dash-heading { font-size: 15px; font-weight: 600; color: var(--text); flex: 1; }
+.dash-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.dash-card {
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg); padding: 16px 18px;
+  cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s;
+}
+.dash-card:hover { border-color: var(--accent); box-shadow: 0 2px 14px rgba(0,0,0,0.08); }
+.dash-card-header { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 12px; }
+.dash-card-name { flex: 1; font-size: 14px; font-weight: 500; color: var(--text); line-height: 1.4; }
+.dash-progress-wrap { height: 3px; background: var(--border); border-radius: 2px; margin-bottom: 8px; }
+.dash-progress-bar { height: 3px; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
+.dash-card-stats { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); }
+.dash-dot { opacity: 0.5; }
+.dash-card-activity { font-size: 11px; color: var(--text-muted); margin-top: 5px; display: flex; align-items: center; gap: 5px; }
+.dash-activity-label { color: var(--text-sub); font-weight: 500; }
+.dash-empty {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; text-align: center; height: 60vh;
+  color: var(--text);
+}
+
 .main-header {
   padding: 14px 20px 12px;
   border-bottom: 0.5px solid var(--border);

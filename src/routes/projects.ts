@@ -26,10 +26,23 @@ projects.get("/", async (c) => {
   if (!user) return c.json({ error: "not authenticated" }, 401);
 
   const rows = await sql`
-    SELECT id, name, slug, visibility, created_at, updated_at
-    FROM projects
-    WHERE owner_id = ${user.id}
-    ORDER BY updated_at DESC
+    WITH activity AS (
+      SELECT project_id, MAX(created_at) AS last_at
+      FROM logs
+      GROUP BY project_id
+    )
+    SELECT
+      p.id, p.name, p.slug, p.visibility, p.created_at, p.updated_at,
+      COUNT(DISTINCT CASE WHEN COALESCE(ci.item_type, 'task') != 'section' THEN ci.id END)::int AS item_count,
+      COUNT(DISTINCT ic.item_id)::int AS completed_count,
+      a.last_at AS last_activity_at
+    FROM projects p
+    LEFT JOIN checklist_items ci ON ci.project_id = p.id
+    LEFT JOIN item_completions ic ON ic.item_id = ci.id
+    LEFT JOIN activity a ON a.project_id = p.id
+    WHERE p.owner_id = ${user.id}
+    GROUP BY p.id, a.last_at
+    ORDER BY COALESCE(a.last_at, p.created_at) DESC
   `;
   return c.json(rows);
 });

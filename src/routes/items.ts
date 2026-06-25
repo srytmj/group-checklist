@@ -391,11 +391,11 @@ items.delete("/batch", async (c) => {
   if (!project) return c.json({ error: "not found" }, 404);
   if (!isOwner(project, user?.id)) return c.json({ error: "owner only" }, 403);
 
-  const body = await c.req.json<{ ids?: number[] }>();
+  const body = await c.req.json<{ ids?: string[] }>();
   const ids = body.ids ?? [];
   if (!Array.isArray(ids) || ids.length === 0) return c.json({ error: "ids required" }, 400);
 
-  await sql`DELETE FROM checklist_items WHERE id = ANY(${ids}::int[]) AND project_id = ${project.id}`;
+  await sql`DELETE FROM checklist_items WHERE id = ANY(${ids}::uuid[]) AND project_id = ${project.id}`;
 
   await writeLog({
     project_id: project.id,

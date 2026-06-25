@@ -336,6 +336,28 @@ const _itemMethods = {
   },
 
   // ---- Tree view: section collapse + progress ----
+  toggleAllSections() {
+    const sections = this.items.filter(i => i.item_type === 'section');
+    const allCollapsed = sections.length > 0 && sections.every(s => this.collapsedSections[s.id]);
+    if (allCollapsed) {
+      this.collapsedSections = {};
+    } else {
+      const map = {};
+      sections.forEach(s => { map[s.id] = true; });
+      this.collapsedSections = map;
+    }
+  },
+
+  selectAll() {
+    const updates = {};
+    this.items.forEach(i => { updates[i.id] = true; });
+    this.selectedItems = updates;
+  },
+  deselectAll() { this.selectedItems = {}; },
+  allSelected() {
+    return this.items.length > 0 && this.items.every(i => !!this.selectedItems[i.id]);
+  },
+
   toggleSection(sectionId) {
     this.collapsedSections = { ...this.collapsedSections, [sectionId]: !this.collapsedSections[sectionId] };
   },
@@ -385,7 +407,7 @@ const _itemMethods = {
   },
 
   async confirmBatchDelete() {
-    const ids = Object.entries(this.selectedItems).filter(([, v]) => v).map(([id]) => Number(id));
+    const ids = Object.entries(this.selectedItems).filter(([, v]) => v).map(([id]) => id);
     if (!ids.length) return;
     try {
       await api('DELETE', `/api/projects/${this.activeProject.slug}/items/batch`, { ids });

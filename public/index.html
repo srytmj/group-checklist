@@ -115,9 +115,52 @@
     <!-- Main -->
     <div class="main">
 
-      <div class="empty-state" x-show="!activeProject">
-        <p x-show="user">Select a project or create one.</p>
-        <p x-show="!user">Open a shared project link to get started.</p>
+      <!-- Guest landing -->
+      <div class="empty-state" x-show="!activeProject && !user">
+        <p>Open a shared project link to get started.</p>
+      </div>
+
+      <!-- Dashboard (logged-in, no project selected) -->
+      <div class="dashboard" x-show="!activeProject && !!user" style="overflow-y:auto;flex:1;">
+        <template x-if="projects.length === 0">
+          <div class="dash-empty">
+            <div style="font-size:36px;margin-bottom:12px;">📋</div>
+            <div style="font-size:16px;font-weight:500;margin-bottom:6px;">No projects yet</div>
+            <div style="font-size:13px;color:var(--text-muted);margin-bottom:18px;">Create your first checklist to get started.</div>
+            <button class="btn btn-primary" @click="openModal('createProject')">+ New project</button>
+          </div>
+        </template>
+        <template x-if="projects.length > 0">
+          <div>
+            <div class="dash-topbar">
+              <h2 class="dash-heading">Your projects</h2>
+              <button class="btn btn-primary" style="font-size:12px;padding:5px 12px;" @click="openModal('createProject')">+ New</button>
+            </div>
+            <div class="dash-cards">
+              <template x-for="p in projects" :key="p.id">
+                <div class="dash-card" @click="selectProject(p.slug)">
+                  <div class="dash-card-header">
+                    <span class="dash-card-name" x-text="p.name"></span>
+                    <span class="badge-vis" :class="p.visibility === 'public' ? 'badge-public' : 'badge-private'"
+                          x-text="p.visibility === 'public' ? '🌐' : '🔒'"></span>
+                  </div>
+                  <div class="dash-progress-wrap">
+                    <div class="dash-progress-bar" :style="{ width: (p.item_count > 0 ? Math.round(p.completed_count / p.item_count * 100) : 0) + '%' }"></div>
+                  </div>
+                  <div class="dash-card-stats">
+                    <span x-text="(p.completed_count || 0) + '/' + (p.item_count || 0) + ' done'"></span>
+                    <span class="dash-dot">·</span>
+                    <span x-text="new Date(p.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })"></span>
+                  </div>
+                  <div class="dash-card-activity" x-show="p.last_activity_at">
+                    <span class="dash-activity-label">Last activity</span>
+                    <span x-text="p.last_activity_at ? new Date(p.last_activity_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' · ' + new Date(p.last_activity_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''"></span>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
       </div>
 
       <template x-if="activeProject">
@@ -138,6 +181,11 @@
             <button x-show="activeProject.is_owner" class="project-menu-item" @click="showProjectMenu = false; toggleVisibility()">
               <span x-text="activeProject.visibility === 'public' ? '🔒' : '🌐'"></span>
               <span x-text="activeProject.visibility === 'public' ? 'Make private' : 'Make public'"></span>
+            </button>
+            <button x-show="viewMode === 'tree' && items.some(i => i.item_type === 'section')" class="project-menu-item"
+                    @click="showProjectMenu = false; toggleAllSections()">
+              <span x-text="items.filter(i => i.item_type === 'section').every(s => collapsedSections[s.id]) ? '▶' : '▼'"></span>
+              <span x-text="items.filter(i => i.item_type === 'section').every(s => collapsedSections[s.id]) ? 'Expand all' : 'Minimize all'"></span>
             </button>
             <button x-show="activeProject.is_owner" class="project-menu-item" :class="{ active: deleteMode }" @click="showProjectMenu = false; toggleDeleteMode()">
               <span>☑</span>
@@ -298,13 +346,13 @@
 
               <!-- Delete mode floating bar -->
               <div x-show="deleteMode" class="delete-bar">
-                <span x-text="selectedCount() + ' item' + (selectedCount() !== 1 ? 's' : '') + ' selected'"></span>
-                <div style="display:flex;gap:6px;">
+                <button class="btn btn-secondary" style="padding:5px 10px;font-size:12px;" @click="allSelected() ? deselectAll() : selectAll()"
+                        x-text="allSelected() ? 'Deselect all' : 'Select all'"></button>
+                <span style="font-size:13px;" x-text="selectedCount() + ' selected'"></span>
+                <div style="display:flex;gap:6px;margin-left:auto;">
                   <button class="btn btn-secondary" style="padding:5px 12px;" @click="toggleDeleteMode()">Cancel</button>
                   <button class="btn btn-primary" style="padding:5px 12px;background:var(--danger);border-color:var(--danger);"
-                          @click="openModal('batchDelete')" :disabled="selectedCount() === 0">
-                    Delete
-                  </button>
+                          @click="openModal('batchDelete')" :disabled="selectedCount() === 0">Delete</button>
                 </div>
               </div>
 
